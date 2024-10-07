@@ -44,19 +44,26 @@ def check_password():
 if not check_password():
     st.stop()
 
-# Load API credentials
-import os
+# Determine if we are running in test or production
+environment = st.secrets.get("environment", "production")  # Defaults to production if not set
+
+# Set API endpoint based on the environment
+if environment == "test":
+    API_URL = "https://test.api.amadeus.com"
+    print("Running in test mode")
+else:
+    API_URL = "https://api.amadeus.com"
+    print("Running in production mode")
 
 # Load API credentials
 if "api" in st.secrets:
     # Load credentials from Streamlit secrets (Streamlit Cloud)
-    api_key = st.secrets["api"]["key"]
-    api_secret = st.secrets["api"]["secret"]
-elif os.path.exists('config/secrets.toml'):
-    # Fallback to loading secrets locally from 'secrets.toml'
-    secrets = toml.load('config/secrets.toml')
-    api_key = secrets['api']['key']
-    api_secret = secrets['api']['secret']
+    if environment == "test":
+        api_key = st.secrets["test_api"]["key"]
+        api_secret = st.secrets["test_api"]["secret"]
+    else:
+        api_key = st.secrets["api"]["key"]
+        api_secret = st.secrets["api"]["secret"]
 else:
     raise FileNotFoundError("Secrets file not found and no Streamlit secrets available.")
 
@@ -86,7 +93,7 @@ travel_class = st.selectbox("Select travel class", ["ECONOMY", "PREMIUM_ECONOMY"
 if st.button("Search Flights"):
     try:
         # Get access token
-        access_token = get_access_token(api_key, api_secret)
+        access_token = get_access_token(api_key, api_secret, API_URL)
         
         # Map departure day to weekday number
         day_mapping = {
@@ -120,7 +127,7 @@ if st.button("Search Flights"):
                     flight_data = get_cheapest_flight(
                         access_token, origin, destination,
                         departure_date_str, return_date_str,
-                        direct_flight, travel_class
+                        direct_flight, travel_class, API_URL
                     )
 
                     # Store results for table and plotting

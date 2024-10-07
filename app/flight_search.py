@@ -1,8 +1,10 @@
 import requests
 from datetime import datetime, timedelta
 
-def get_access_token(api_key, api_secret):
-    url = "https://test.api.amadeus.com/v1/security/oauth2/token"
+
+
+def get_access_token(api_key, api_secret, api_url):
+    url = f"{api_url}/v1/security/oauth2/token"
     payload = {
         'grant_type': 'client_credentials',
         'client_id': api_key,
@@ -16,8 +18,8 @@ def get_access_token(api_key, api_secret):
     else:
         raise Exception(f"Error: {response.status_code} - {response.text}")
 
-def get_cheapest_flight(access_token, origin, destination, departure_date, return_date, direct_flight, travel_class):
-    url = "https://test.api.amadeus.com/v2/shopping/flight-offers"
+def get_cheapest_flight(access_token, origin, destination, departure_date, return_date, direct_flight, travel_class, api_url):
+    url = f"{api_url}/v2/shopping/flight-offers"
     params = {
         'originLocationCode': origin,
         'destinationLocationCode': destination,
