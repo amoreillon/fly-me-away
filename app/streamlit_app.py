@@ -79,6 +79,11 @@ travel_class_default = params_config['search']['travel_class'].upper()
 # Streamlit UI
 st.title("Fly Me Away")
 
+# Display environment status message
+environment_status = "Live data" if environment == "production" else "Test data"
+status_color = "green" if environment == "production" else "orange"
+st.markdown(f"**Status: <span style='color:{status_color}'>{environment_status}</span>**", unsafe_allow_html=True)
+
 # Set default values in input widgets
 origin = st.text_input("Enter the origin airport code (e.g., ZRH)", value=origin_default).upper()
 destination = st.text_input("Enter the destination airport code (e.g., LHR)", value=destination_default).upper()
