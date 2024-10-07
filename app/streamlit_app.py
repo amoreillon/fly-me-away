@@ -6,15 +6,20 @@ import pandas as pd
 from flight_search import get_access_token, get_cheapest_flight
 
 # Load API credentials
-try:
-    # Attempt to load credentials from Streamlit secrets (Streamlit Cloud)
+import os
+
+# Load API credentials
+if "api" in st.secrets:
+    # Load credentials from Streamlit secrets (Streamlit Cloud)
     api_key = st.secrets["api"]["key"]
     api_secret = st.secrets["api"]["secret"]
-except AttributeError:
+elif os.path.exists('config/secrets.toml'):
     # Fallback to loading secrets locally from 'secrets.toml'
     secrets = toml.load('config/secrets.toml')
     api_key = secrets['api']['key']
     api_secret = secrets['api']['secret']
+else:
+    raise FileNotFoundError("Secrets file not found and no Streamlit secrets available.")
 
 # Load search parameters from parameters.toml
 params_config = toml.load('config/parameters.toml')
