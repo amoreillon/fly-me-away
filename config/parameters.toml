@@ -1,0 +1,7 @@
+[search]
+origin = "ZRH"
+destination = "OPO"
+departure_day = "friday"
+number_of_nights = 2
+direct_flight = true
+travel_class = "ECONOMY"
