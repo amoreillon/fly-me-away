@@ -168,7 +168,7 @@ if st.button("Search Flights"):
                         break
 
                 # Pause to respect rate limit
-                time.sleep(0.5)
+                time.sleep(0.1)
 
             # Update progress
             progress_counter += 1
