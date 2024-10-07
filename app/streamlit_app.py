@@ -6,9 +6,15 @@ import pandas as pd
 from flight_search import get_access_token, get_cheapest_flight
 
 # Load API credentials
-secrets = toml.load('config/secrets.toml')
-api_key = secrets['api']['key']
-api_secret = secrets['api']['secret']
+try:
+    # Attempt to load credentials from Streamlit secrets (Streamlit Cloud)
+    api_key = st.secrets["api"]["key"]
+    api_secret = st.secrets["api"]["secret"]
+except AttributeError:
+    # Fallback to loading secrets locally from 'secrets.toml'
+    secrets = toml.load('config/secrets.toml')
+    api_key = secrets['api']['key']
+    api_secret = secrets['api']['secret']
 
 # Load search parameters from parameters.toml
 params_config = toml.load('config/parameters.toml')
