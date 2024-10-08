@@ -44,23 +44,32 @@ def check_password():
 if not check_password():
     st.stop()
 
-def filter_flights_by_time(flights, time_option):
-    """Filters flight segments based on the selected time option."""
+# Filter flights by time function
+def filter_flights_by_time(flights, departure_time_option, return_time_option):
+    """Filters flight segments based on the selected departure and return time options."""
     filtered_flights = []
     for flight in flights:
         departure_time = flight['itineraries'][0]['segments'][0]['departure']['at'].split('T')[1]
-        hour = int(departure_time.split(':')[0])
-        
+        return_time = flight['itineraries'][1]['segments'][0]['departure']['at'].split('T')[1]
+
+        dep_hour = int(departure_time.split(':')[0])
+        ret_hour = int(return_time.split(':')[0])
+
+        # Filter based on both departure and return time options
         if (
-            time_option == "Morning (midnight to noon)" and 0 <= hour < 12 or
-            time_option == "Afternoon and evening (noon to midnight)" and 12 <= hour < 18 or
-            time_option == "Evening (6pm to midnight)" and 18 <= hour < 24 or
-            time_option == "Any"
+            (departure_time_option == "Morning (midnight to noon)" and 0 <= dep_hour < 12 or
+             departure_time_option == "Afternoon and evening (noon to midnight)" and 12 <= dep_hour < 18 or
+             departure_time_option == "Evening (6pm to midnight)" and 18 <= dep_hour < 24 or
+             departure_time_option == "Any")
+        ) and (
+            (return_time_option == "Morning (midnight to noon)" and 0 <= ret_hour < 12 or
+             return_time_option == "Afternoon and evening (noon to midnight)" and 12 <= ret_hour < 18 or
+             return_time_option == "Evening (6pm to midnight)" and 18 <= ret_hour < 24 or
+             return_time_option == "Any")
         ):
             filtered_flights.append(flight)
-    
-    return filtered_flights
 
+    return filtered_flights
 
 # Determine if we are running in test or production
 environment = st.secrets.get("environment", "production")  # Defaults to production if not set
@@ -167,9 +176,8 @@ if st.button("Search Flights"):
 
                     # Filter flights based on preferred departure and return times
                     if flight_data['data']:
-                        filtered_flights = filter_flights_by_time(flight_data['data'], departure_time_option)
-                        filtered_flights = filter_flights_by_time(filtered_flights, return_time_option)
-
+                        filtered_flights = filter_flights_by_time(flight_data['data'], departure_time_option, return_time_option)
+                        
                         # Continue with the cheapest flight among filtered flights
                         if filtered_flights:
                             cheapest_flight = min(filtered_flights, key=lambda x: float(x['price']['total']))
@@ -177,19 +185,24 @@ if st.button("Search Flights"):
                             # Extract departure flight details (all segments)
                             departure_segments = cheapest_flight['itineraries'][0]['segments']
                             departure_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in departure_segments])
+                            departure_time = departure_segments[0]['departure']['at']
 
                             # Extract return flight details (all segments)
                             return_segments = cheapest_flight['itineraries'][1]['segments']
                             return_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in return_segments])
+                            return_time = return_segments[0]['departure']['at']
 
                             # Store data for the table with price and currency
                             flight_prices.append({
                                 "departure_date": departure_date_str,
+                                "departure_time": departure_time.split('T')[1],
                                 "departure_flight": departure_flights,
                                 "return_date": return_date_str,
+                                "return_time": return_time.split('T')[1],
                                 "return_flight": return_flights,
                                 "price": f"{cheapest_flight['price']['total']} {cheapest_flight['price']['currency']}"
                             })
+
 
                 except Exception as e:
                     if '429' in str(e):

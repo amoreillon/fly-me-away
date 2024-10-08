@@ -25,7 +25,7 @@ def get_cheapest_flight(access_token, origin, destination, departure_date, retur
         'departureDate': departure_date,
         'returnDate': return_date,
         'adults': 1,
-        'max': 20,  # Increase from 5 to 20 to cover more possible flight options
+        'max': 30,  
         'nonStop': str(direct_flight).lower(),
         'travelClass': travel_class
     }
