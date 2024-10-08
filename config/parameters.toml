@@ -5,3 +5,5 @@ departure_day = "friday"
 number_of_nights = 2
 direct_flight = true
 travel_class = "ECONOMY"
+departure_time_option = "Any"
+return_time_option = "Any"

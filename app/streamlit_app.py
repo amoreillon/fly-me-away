@@ -44,6 +44,24 @@ def check_password():
 if not check_password():
     st.stop()
 
+def filter_flights_by_time(flights, time_option):
+    """Filters flight segments based on the selected time option."""
+    filtered_flights = []
+    for flight in flights:
+        departure_time = flight['itineraries'][0]['segments'][0]['departure']['at'].split('T')[1]
+        hour = int(departure_time.split(':')[0])
+        
+        if (
+            time_option == "Morning (midnight to noon)" and 0 <= hour < 12 or
+            time_option == "Afternoon and evening (noon to midnight)" and 12 <= hour < 18 or
+            time_option == "Evening (6pm to midnight)" and 18 <= hour < 24 or
+            time_option == "Any"
+        ):
+            filtered_flights.append(flight)
+    
+    return filtered_flights
+
+
 # Determine if we are running in test or production
 environment = st.secrets.get("environment", "production")  # Defaults to production if not set
 
@@ -85,6 +103,23 @@ status_color = "green" if environment == "production" else "orange"
 st.markdown(f"**Status: <span style='color:{status_color}'>{environment_status}</span>**", unsafe_allow_html=True)
 
 # Set default values in input widgets
+
+# Load departure and return time options from parameters.toml
+departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
+return_time_option_default = params_config['search'].get('return_time_option', 'Any')
+# Toggle option for departure time for departure and return flights
+departure_time_option = st.selectbox(
+    "Select preferred departure time for outbound flight",
+    ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
+    index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
+)
+
+return_time_option = st.selectbox(
+    "Select preferred departure time for return flight",
+    ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
+    index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
+)
+
 origin = st.text_input("Enter the origin airport code (e.g., ZRH)", value=origin_default).upper()
 destination = st.text_input("Enter the destination airport code (e.g., LHR)", value=destination_default).upper()
 start_date = st.date_input("Enter the start date for the range", datetime.now() + timedelta(days=1))  # Default to tomorrow's date
@@ -99,7 +134,7 @@ if st.button("Search Flights"):
     try:
         # Get access token
         access_token = get_access_token(api_key, api_secret, API_URL)
-        
+
         # Map departure day to weekday number
         day_mapping = {
             'Monday': 0,
@@ -135,26 +170,31 @@ if st.button("Search Flights"):
                         direct_flight, travel_class, API_URL
                     )
 
-                    # Store results for table and plotting
+                    # Filter flights based on preferred departure and return times
                     if flight_data['data']:
-                        cheapest_flight = min(flight_data['data'], key=lambda x: float(x['price']['total']))
+                        filtered_flights = filter_flights_by_time(flight_data['data'], departure_time_option)
+                        filtered_flights = filter_flights_by_time(filtered_flights, return_time_option)
 
-                        # Extract departure flight details (all segments)
-                        departure_segments = cheapest_flight['itineraries'][0]['segments']
-                        departure_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in departure_segments])
+                        # Continue with the cheapest flight among filtered flights
+                        if filtered_flights:
+                            cheapest_flight = min(filtered_flights, key=lambda x: float(x['price']['total']))
 
-                        # Extract return flight details (all segments)
-                        return_segments = cheapest_flight['itineraries'][1]['segments']
-                        return_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in return_segments])
+                            # Extract departure flight details (all segments)
+                            departure_segments = cheapest_flight['itineraries'][0]['segments']
+                            departure_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in departure_segments])
 
-                        # Store data for the table with price and currency
-                        flight_prices.append({
-                            "departure_date": departure_date_str,
-                            "departure_flight": departure_flights,
-                            "return_date": return_date_str,
-                            "return_flight": return_flights,
-                            "price": f"{cheapest_flight['price']['total']} {cheapest_flight['price']['currency']}"
-                        })
+                            # Extract return flight details (all segments)
+                            return_segments = cheapest_flight['itineraries'][1]['segments']
+                            return_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in return_segments])
+
+                            # Store data for the table with price and currency
+                            flight_prices.append({
+                                "departure_date": departure_date_str,
+                                "departure_flight": departure_flights,
+                                "return_date": return_date_str,
+                                "return_flight": return_flights,
+                                "price": f"{cheapest_flight['price']['total']} {cheapest_flight['price']['currency']}"
+                            })
 
                 except Exception as e:
                     if '429' in str(e):
@@ -168,7 +208,7 @@ if st.button("Search Flights"):
                         break
 
                 # Pause to respect rate limit
-                time.sleep(0.1)
+                time.sleep(0.5)
 
             # Update progress
             progress_counter += 1
@@ -176,7 +216,7 @@ if st.button("Search Flights"):
 
             current_date += timedelta(days=1)
 
-        # Plot the data if available
+        # Display the flight data table if available
         if flight_prices:
             df = pd.DataFrame(flight_prices)
             df['departure_date'] = pd.to_datetime(df['departure_date']).dt.date

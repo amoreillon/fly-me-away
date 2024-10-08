@@ -19,21 +19,21 @@ def get_access_token(api_key, api_secret, api_url):
         raise Exception(f"Error: {response.status_code} - {response.text}")
 
 def get_cheapest_flight(access_token, origin, destination, departure_date, return_date, direct_flight, travel_class, api_url):
-    url = f"{api_url}/v2/shopping/flight-offers"
     params = {
         'originLocationCode': origin,
         'destinationLocationCode': destination,
         'departureDate': departure_date,
         'returnDate': return_date,
         'adults': 1,
-        'max': 5,
+        'max': 20,  # Increase from 5 to 20 to cover more possible flight options
         'nonStop': str(direct_flight).lower(),
         'travelClass': travel_class
     }
     headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(f"{api_url}/v2/shopping/flight-offers", headers=headers, params=params)
 
     if response.status_code == 200:
         return response.json()
     else:
         raise Exception(f"Error: {response.status_code} - {response.text}")
+
