@@ -112,6 +112,14 @@ return_time_option_default = params_config['search'].get('return_time_option', '
 # Streamlit UI
 st.title("Fly Me Away")
 
+# Add description text below the title
+st.markdown(
+    """
+    Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. <span style='color:darkblue; font-style:italic;'>Fly Me Away</span> looks up the best weekly prices. Choose a date, not financial pain.
+    """,
+    unsafe_allow_html=True
+)
+
 # Display environment status message
 environment_status = "Live data" if environment == "production" else "Test data"
 status_color = "green" if environment == "production" else "orange"
