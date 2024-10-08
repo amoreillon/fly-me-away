@@ -12,10 +12,14 @@ def check_password():
 
     def login_form():
         """Form with widgets to collect user information"""
-        with st.form("Credentials"):
-            st.text_input("Username", key="username")
-            st.text_input("Password", type="password", key="password")
-            st.form_submit_button("Log in", on_click=password_entered)
+        # Display the image in a centered column layout
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.image("assets/logo.jpg", width=350)
+            with st.form("Credentials"):
+                st.text_input("Username", key="username")
+                st.text_input("Password", type="password", key="password")
+                st.form_submit_button("Log in", on_click=password_entered)
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
