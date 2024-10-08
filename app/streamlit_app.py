@@ -279,11 +279,9 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     with tab2:
         st.write("### Price Trend Chart")
         df_chart = df.set_index('departure_date')['price']
-        st.line_chart(df_chart)
-
-        # Add scatter plot to mark each data point with the price label
-        for date, price in df_chart.items():
-            st.write(f"{date}: {price:.2f}")
+        st.area_chart(df_chart)
+        st.markdown("**X-axis: Date**")
+        st.markdown("**Y-axis: Price**")
 
     if st.button("Back to Search"):
         st.session_state['page'] = 'input'
