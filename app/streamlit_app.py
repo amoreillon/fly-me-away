@@ -262,7 +262,8 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
 
     # Highlight the best price in the results table
     best_price_index = df['price'].idxmin()
-    df.insert(0, '🔥', ['🔥' if i == best_price_index else '' for i in df.index])
+    if '🔥' not in df.columns:
+        df.insert(0, '🔥', ['🔥' if i == best_price_index else '' for i in df.index])
 
     def highlight_best_price(row):
         return ['background-color: lightgreen' if row.name == best_price_index else '' for _ in row]
@@ -272,12 +273,18 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
 
     with tab1:
         st.write("### Detailed Flight Information")
-        styled_df = df.style.apply(highlight_best_price, axis=1)
+        styled_df = df.style.format({"price": "{:.2f}"}).apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
 
     with tab2:
         st.write("### Price Trend Chart")
-        st.line_chart(df.set_index('departure_date')['price'])
+        df_chart = df.set_index('departure_date')['price']
+        st.line_chart(df_chart)
+
+        # Add scatter plot to mark each data point with the price label
+        for date, price in df_chart.items():
+            st.write(f"{date}: {price:.2f}")
 
     if st.button("Back to Search"):
-        st.session_state['page']
+        st.session_state['page'] = 'input'
+        st.rerun()
