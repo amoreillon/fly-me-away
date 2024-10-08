@@ -213,12 +213,13 @@ if st.session_state['page'] == 'input':
                                 # Store data for the table with price and currency
                                 flight_prices.append({
                                     "departure_date": departure_date_str,
-                                    "departure_time": departure_time.split('T')[1],
+                                    "departure_time": departure_time.split('T')[1][:5],
                                     "departure_flight": departure_flights,
                                     "return_date": return_date_str,
-                                    "return_time": return_time.split('T')[1],
+                                    "return_time": return_time.split('T')[1][:5],
                                     "return_flight": return_flights,
-                                    "price": f"{cheapest_flight['price']['total']} {cheapest_flight['price']['currency']}"
+                                    "price": round(float(cheapest_flight['price']['total']), 2),
+                                    "currency": cheapest_flight['price']['currency']
                                 })
 
                     except Exception as e:
@@ -258,8 +259,25 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     df = st.session_state['flight_prices']
     df['departure_date'] = pd.to_datetime(df['departure_date']).dt.date
     df['return_date'] = pd.to_datetime(df['return_date']).dt.date
-    st.dataframe(df)
+
+    # Highlight the best price in the results table
+    best_price_index = df['price'].idxmin()
+    df.insert(0, '🔥', ['🔥' if i == best_price_index else '' for i in df.index])
+
+    def highlight_best_price(row):
+        return ['background-color: lightgreen' if row.name == best_price_index else '' for _ in row]
+
+    # Tabs for different views
+    tab1, tab2 = st.tabs(["Table", "Chart"])
+
+    with tab1:
+        st.write("### Detailed Flight Information")
+        styled_df = df.style.apply(highlight_best_price, axis=1)
+        st.dataframe(styled_df)
+
+    with tab2:
+        st.write("### Price Trend Chart")
+        st.line_chart(df.set_index('departure_date')['price'])
 
     if st.button("Back to Search"):
-        st.session_state['page'] = 'input'
-        st.rerun()
+        st.session_state['page']
