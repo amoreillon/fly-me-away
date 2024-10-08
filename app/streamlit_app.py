@@ -93,6 +93,8 @@ departure_day_default = params_config['search']['departure_day'].capitalize()
 number_of_nights_default = params_config['search']['number_of_nights']
 direct_flight_default = params_config['search']['direct_flight']
 travel_class_default = params_config['search']['travel_class'].upper()
+departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
+return_time_option_default = params_config['search'].get('return_time_option', 'Any')
 
 # Streamlit UI
 st.title("Fly Me Away")
@@ -103,29 +105,22 @@ status_color = "green" if environment == "production" else "orange"
 st.markdown(f"**Status: <span style='color:{status_color}'>{environment_status}</span>**", unsafe_allow_html=True)
 
 # Set default values in input widgets
-
-# Load departure and return time options from parameters.toml
-departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
-return_time_option_default = params_config['search'].get('return_time_option', 'Any')
-# Toggle option for departure time for departure and return flights
-departure_time_option = st.selectbox(
-    "Select preferred departure time for outbound flight",
-    ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
-    index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
-)
-
-return_time_option = st.selectbox(
-    "Select preferred departure time for return flight",
-    ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
-    index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
-)
-
 origin = st.text_input("Enter the origin airport code (e.g., ZRH)", value=origin_default).upper()
 destination = st.text_input("Enter the destination airport code (e.g., LHR)", value=destination_default).upper()
 start_date = st.date_input("Enter the start date for the range", datetime.now() + timedelta(days=1))  # Default to tomorrow's date
 end_date = st.date_input("Enter the end date for the range", datetime.now() + timedelta(days=90))  # Default to three months from tomorrow
 departure_day = st.selectbox("Enter the day of departure", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], index=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(departure_day_default))
+departure_time_option = st.selectbox(
+    "Select preferred departure time for outbound flight",
+    ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
+    index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
+)
 number_of_nights = st.number_input("Enter the number of nights to stay", min_value=1, value=number_of_nights_default)
+return_time_option = st.selectbox(
+    "Select preferred departure time for return flight",
+    ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
+    index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
+)
 direct_flight = st.checkbox("Direct flight only?", value=direct_flight_default)
 travel_class = st.selectbox("Select travel class", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(travel_class_default))
 
