@@ -279,7 +279,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     with tab2:
         st.write("### Price Trend Chart")
         df_chart = df.set_index('departure_date')['price']
-        st.area_chart(df_chart)
+        st.scatter_chart(df_chart)
 
     if st.button("Back to Search"):
         st.session_state['page'] = 'input'
