@@ -121,7 +121,7 @@ if st.session_state['page'] == 'input':
     # Add description text below the title
     st.markdown(
         """
-        Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. <span style='color:darkblue; font-style:italic;'>Fly Me Away</span> looks up the best weekly prices. Choose a date, not financial pain.
+        Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. <span style='color:darkblue; font-style:italic;'>Fly Me Away</span> looks up the best weekly prices. 
         """,
         unsafe_allow_html=True
     )
@@ -280,8 +280,6 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
         st.write("### Price Trend Chart")
         df_chart = df.set_index('departure_date')['price']
         st.area_chart(df_chart)
-        st.markdown("**X-axis: Date**")
-        st.markdown("**Y-axis: Price**")
 
     if st.button("Back to Search"):
         st.session_state['page'] = 'input'
