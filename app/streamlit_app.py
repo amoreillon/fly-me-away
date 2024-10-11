@@ -117,47 +117,49 @@ return_time_option_default = params_config['search'].get('return_time_option', '
 st.set_page_config(page_title="Fly Me Away", page_icon="✈️", layout="wide")
 
 # Custom CSS for styling
+# Custom CSS for styling
 st.markdown(
     """
     <style>
     .stApp {
-        background-color: #F0EEE9;
-    }
-    .streamlit-expanderHeader {
         background-color: #40E0D0;
-        color: #000080;
+    }
+    div[data-testid="stExpander"] {
+        background-color: white;
         border: 1px solid #000080;
         border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .streamlit-expanderHeader {
+        background-color: white !important;
+        color: #000080 !important;
+        border-bottom: 1px solid #000080;
+        border-radius: 4px 4px 0 0;
         padding: 10px;
         font-weight: bold;
     }
     .streamlit-expanderContent {
-        background-color: white;
-        border: 1px solid #000080;
+        background-color: white !important;
         border-top: none;
         border-radius: 0 0 4px 4px;
         padding: 10px;
     }
     .stButton > button {
-        background-color: #40E0D0;
-        color: #000080;
+        background-color: #FFA500;
+        color: white;
         border: 2px solid #000080;
         border-radius: 8px;
         padding: 10px;
         font-weight: bold;
     }
     .stButton > button:hover {
-        background-color: #FFA500;
-        color: white;
+        background-color: #FF8C00;
     }
-    .stSelectbox > div > div {
-        background-color: white;
-    }
-    .stTextInput > div > div {
+    .stSelectbox > div > div, .stTextInput > div > div {
         background-color: white;
     }
     h1, h2, h3 {
-        color: #000080;
+        color: white;
     }
     p {
         color: #000080;
@@ -176,18 +178,13 @@ if st.session_state['page'] == 'input':
     # Add description text below the title
     st.markdown(
         """
-        <p style='color: #000080;'>
+        <p style='color: white;'>
         Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. 
         <span style='color: #FFA500; font-style: italic;'>Fly Me Away</span> looks up the best weekly prices.
         </p>
         """,
         unsafe_allow_html=True
     )
-
-    # Display environment status message
-    environment_status = "Live data" if environment == "production" else "Test data"
-    status_color = "green" if environment == "production" else "orange"
-    st.markdown(f"**Status: <span style='color:{status_color}'>{environment_status}</span>**", unsafe_allow_html=True)
 
     # Flight Details Expander
     with st.expander("**Flight Details**", expanded=True):
@@ -197,7 +194,7 @@ if st.session_state['page'] == 'input':
             origin = st.text_input("Origin Airport Code (e.g., ZRH)", value=origin_default).upper()
             departure_day = st.selectbox("Day of Departure", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], index=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(departure_day_default))
             departure_time_option = st.selectbox(
-                "Departure time",
+                "Select preferred departure time for outbound flight",
                 ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
                 index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
             )
@@ -206,7 +203,7 @@ if st.session_state['page'] == 'input':
             destination = st.text_input("Destination Airport Code (e.g., LHR)", value=destination_default).upper()
             number_of_nights = st.number_input("Nights to Stay", min_value=1, value=number_of_nights_default)
             return_time_option = st.selectbox(
-                "Return time",
+                "Select preferred departure time for return flight",
                 ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
                 index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
             )
