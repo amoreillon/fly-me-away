@@ -50,7 +50,6 @@ def check_password():
 if not check_password():
     st.stop()
 
-
 # Filter flights by time function
 def filter_flights_by_time(flights, departure_time_option, return_time_option):
     """Filters flight segments based on the selected departure and return time options."""
@@ -113,6 +112,39 @@ departure_time_option_default = params_config['search'].get('departure_time_opti
 return_time_option_default = params_config['search'].get('return_time_option', 'Any')
 
 # Streamlit UI
+
+# Set page config
+st.set_page_config(page_title="Fly Me Away", page_icon="✈️", layout="wide")
+
+# Custom CSS for styling
+st.markdown(
+    """
+    <style>
+    .streamlit-expanderHeader {
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        font-weight: bold;
+    }
+    .streamlit-expanderContent {
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        padding: 10px;
+    }
+    .stButton > button {
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 8px;
+        padding: 10px;
+        font-weight: bold;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 if 'page' not in st.session_state:
     st.session_state['page'] = 'input'
 
@@ -132,31 +164,56 @@ if st.session_state['page'] == 'input':
     status_color = "green" if environment == "production" else "orange"
     st.markdown(f"**Status: <span style='color:{status_color}'>{environment_status}</span>**", unsafe_allow_html=True)
 
-    # Set default values in input widgets
-    origin = st.text_input("Enter the origin airport code (e.g., ZRH)", value=origin_default).upper()
-    destination = st.text_input("Enter the destination airport code (e.g., LHR)", value=destination_default).upper()
-    start_date = st.date_input("Enter the start date for the range", datetime.now() + timedelta(days=1))  # Default to tomorrow's date
-    end_date = st.date_input("Enter the end date for the range", datetime.now() + timedelta(days=90))  # Default to three months from tomorrow
-    departure_day = st.selectbox("Enter the day of departure", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], index=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(departure_day_default))
-    departure_time_option = st.selectbox(
-        "Select preferred departure time for outbound flight",
-        ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
-        index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
-    )
-    number_of_nights = st.number_input("Enter the number of nights to stay", min_value=1, value=number_of_nights_default)
-    return_time_option = st.selectbox(
-        "Select preferred departure time for return flight",
-        ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
-        index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
-    )
-    direct_flight = st.checkbox("Direct flight only?", value=direct_flight_default)
-    travel_class = st.selectbox("Select travel class", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(travel_class_default))
+    # Flight Details Expander
+    with st.expander("**Flight Details**", expanded=True):
+        col1, col2 = st.columns(2)
 
-    # Search button to execute flight search
+        with col1:
+            origin = st.text_input("Origin Airport Code (e.g., ZRH)", value=origin_default).upper()
+            departure_day = st.selectbox("Day of Departure", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], index=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(departure_day_default))
+            departure_time_option = st.selectbox(
+                "Departure time",
+                ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
+                index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
+            )
+
+        with col2:
+            destination = st.text_input("Destination Airport Code (e.g., LHR)", value=destination_default).upper()
+            number_of_nights = st.number_input("Nights to Stay", min_value=1, value=number_of_nights_default)
+            return_time_option = st.selectbox(
+                "Return time",
+                ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
+                index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
+            )
+
+    # Range of Travel Dates Expander
+    with st.expander("**Range of Travel Dates**", expanded=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            start_date = st.date_input("Start Date", datetime.now() + timedelta(days=1))  # Default to tomorrow's date
+        
+        with col2:
+            end_date = st.date_input("End Date", datetime.now() + timedelta(days=90))  # Default to three months from tomorrow
+
+    # Preferences Expander
+    with st.expander("**Preferences**", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            flight_type = st.selectbox("Flight Type", ["Direct only", "Including stopovers"], index=0 if direct_flight_default else 1)
+        
+        with col2:
+            travel_class = st.selectbox("Select travel class", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(travel_class_default))
+
+    # Main search button
     if st.button("Search Flights"):
         try:
             # Get access token
             access_token = get_access_token(api_key, api_secret, API_URL)
+
+            # Convert flight_type to boolean for the API call
+            direct_flight = (flight_type == "Direct only")
 
             # Map departure day to weekday number
             day_mapping = {
