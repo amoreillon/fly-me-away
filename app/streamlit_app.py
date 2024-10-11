@@ -120,25 +120,47 @@ st.set_page_config(page_title="Fly Me Away", page_icon="✈️", layout="wide")
 st.markdown(
     """
     <style>
+    .stApp {
+        background-color: #F0EEE9;
+    }
     .streamlit-expanderHeader {
-        background-color: white;
-        border: 1px solid #ddd;
+        background-color: #40E0D0;
+        color: #000080;
+        border: 1px solid #000080;
         border-radius: 4px;
         padding: 10px;
         font-weight: bold;
     }
     .streamlit-expanderContent {
-        border: 1px solid #ddd;
+        background-color: white;
+        border: 1px solid #000080;
         border-top: none;
         border-radius: 0 0 4px 4px;
         padding: 10px;
     }
     .stButton > button {
-        background-color: #4CAF50;
-        color: white;
+        background-color: #40E0D0;
+        color: #000080;
+        border: 2px solid #000080;
         border-radius: 8px;
         padding: 10px;
         font-weight: bold;
+    }
+    .stButton > button:hover {
+        background-color: #FFA500;
+        color: white;
+    }
+    .stSelectbox > div > div {
+        background-color: white;
+    }
+    .stTextInput > div > div {
+        background-color: white;
+    }
+    h1, h2, h3 {
+        color: #000080;
+    }
+    p {
+        color: #000080;
     }
     </style>
     """,
@@ -154,7 +176,10 @@ if st.session_state['page'] == 'input':
     # Add description text below the title
     st.markdown(
         """
-        Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. <span style='color:darkblue; font-style:italic;'>Fly Me Away</span> looks up the best weekly prices. 
+        <p style='color: #000080;'>
+        Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. 
+        <span style='color: #FFA500; font-style: italic;'>Fly Me Away</span> looks up the best weekly prices.
+        </p>
         """,
         unsafe_allow_html=True
     )
