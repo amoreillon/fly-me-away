@@ -9,17 +9,8 @@ from flight_search import get_access_token, get_cheapest_flight
 # Input Section
 
 # Function to check password
-# Function to check password
 def check_password():
     """Returns True if the user had a correct password."""
-
-    # Initialize session state keys if they do not exist
-    if "username" not in st.session_state:
-        st.session_state["username"] = ""
-    if "password" not in st.session_state:
-        st.session_state["password"] = ""
-    if "password_correct" not in st.session_state:
-        st.session_state["password_correct"] = False
 
     def login_form():
         """Form with widgets to collect user information"""
