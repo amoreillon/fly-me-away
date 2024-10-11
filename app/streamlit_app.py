@@ -3,79 +3,11 @@ from datetime import datetime, timedelta
 import toml
 import time
 import pandas as pd
-import hmac
-from flight_search import get_access_token, get_cheapest_flight
+from flight_search import get_access_token, get_cheapest_flight, filter_flights_by_time
+from ui_components import set_page_style, render_input_page, render_results_page
+from auth import check_password  # Import the check_password function from auth.py
 
-# Input Section
 
-# Function to check password
-def check_password():
-    """Returns True if the user had a correct password."""
-
-    def login_form():
-        """Form with widgets to collect user information"""
-        # Display the image in a centered column layout
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image("assets/logo.jpg", width=350)
-            with st.form("Credentials"):
-                st.text_input("Username", key="username")
-                st.text_input("Password", type="password", key="password")
-                st.form_submit_button("Log in", on_click=password_entered)
-
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        if st.session_state["username"] in st.secrets[
-            "passwords"
-        ] and hmac.compare_digest(
-            st.session_state["password"],
-            st.secrets.passwords[st.session_state["username"]],
-        ):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the username or password.
-            del st.session_state["username"]
-        else:
-            st.session_state["password_correct"] = False
-
-    # Return True if the username + password is validated.
-    if st.session_state.get("password_correct", False):
-        return True
-
-    # Show inputs for username + password.
-    login_form()
-    if "password_correct" in st.session_state:
-        st.error("😕 User not known or password incorrect")
-    return False
-
-if not check_password():
-    st.stop()
-
-# Filter flights by time function
-def filter_flights_by_time(flights, departure_time_option, return_time_option):
-    """Filters flight segments based on the selected departure and return time options."""
-    filtered_flights = []
-    for flight in flights:
-        departure_time = flight['itineraries'][0]['segments'][0]['departure']['at'].split('T')[1]
-        return_time = flight['itineraries'][1]['segments'][0]['departure']['at'].split('T')[1]
-
-        dep_hour = int(departure_time.split(':')[0])
-        ret_hour = int(return_time.split(':')[0])
-
-        # Filter based on both departure and return time options
-        if (
-            (departure_time_option == "Morning (midnight to noon)" and 0 <= dep_hour < 12 or
-             departure_time_option == "Afternoon and evening (noon to midnight)" and 12 <= dep_hour < 18 or
-             departure_time_option == "Evening (6pm to midnight)" and 18 <= dep_hour < 24 or
-             departure_time_option == "Any")
-        ) and (
-            (return_time_option == "Morning (midnight to noon)" and 0 <= ret_hour < 12 or
-             return_time_option == "Afternoon and evening (noon to midnight)" and 12 <= ret_hour < 18 or
-             return_time_option == "Evening (6pm to midnight)" and 18 <= ret_hour < 24 or
-             return_time_option == "Any")
-        ):
-            filtered_flights.append(flight)
-
-    return filtered_flights
 
 # Determine if we are running in test or production
 environment = st.secrets.get("environment", "production")  # Defaults to production if not set
@@ -100,7 +32,7 @@ if "api" in st.secrets:
 else:
     raise FileNotFoundError("Secrets file not found and no Streamlit secrets available.")
 
-# Load search parameters from parameters.toml
+# Load default search parameters from parameters.toml
 params_config = toml.load('config/parameters.toml')
 origin_default = params_config['search']['origin']
 destination_default = params_config['search']['destination']
@@ -116,58 +48,11 @@ return_time_option_default = params_config['search'].get('return_time_option', '
 # Set page config
 st.set_page_config(page_title="Fly Me Away", page_icon="✈️", layout="wide")
 
-# Custom CSS for styling
-# Custom CSS for styling
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #40E0D0;
-    }
-    div[data-testid="stExpander"] {
-        background-color: white;
-        border: 1px solid #000080;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-    }
-    .streamlit-expanderHeader {
-        background-color: white !important;
-        color: #000080 !important;
-        border-bottom: 1px solid #000080;
-        border-radius: 4px 4px 0 0;
-        padding: 10px;
-        font-weight: bold;
-    }
-    .streamlit-expanderContent {
-        background-color: white !important;
-        border-top: none;
-        border-radius: 0 0 4px 4px;
-        padding: 10px;
-    }
-    .stButton > button {
-        background-color: #FFA500;
-        color: white;
-        border: 2px solid #000080;
-        border-radius: 8px;
-        padding: 10px;
-        font-weight: bold;
-    }
-    .stButton > button:hover {
-        background-color: #FF8C00;
-    }
-    .stSelectbox > div > div, .stTextInput > div > div {
-        background-color: white;
-    }
-    h1, h2, h3 {
-        color: white;
-    }
-    p {
-        color: #000080;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# Apply custom styling
+set_page_style()
+
+if not check_password():
+    st.stop()
 
 if 'page' not in st.session_state:
     st.session_state['page'] = 'input'
