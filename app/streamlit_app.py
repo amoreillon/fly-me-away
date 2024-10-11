@@ -5,7 +5,7 @@ import time
 import pandas as pd
 from flight_search import get_access_token, get_cheapest_flight, filter_flights_by_time
 from ui_components import set_page_style, render_input_page, render_results_page
-from auth import check_password  # Import the check_password function from auth.py
+from auth import check_password 
 
 
 
