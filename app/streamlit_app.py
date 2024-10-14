@@ -180,14 +180,14 @@ if st.session_state['page'] == 'input':
 
     # Use columns for layout within the container
     with top_container:
-        col1, col2 = st.columns([1, 3])  # Adjust the ratio as needed
+        col1, spacer, col2 = st.columns([1, 0.5, 3])  # Adjust the ratios as needed
 
         with col1:
             st.image("assets/logo.png", width=200)  # Adjust width as needed
-            st.write("")  # This adds a small vertical space
+
+        # The spacer column remains empty, creating horizontal space
 
         with col2:
-            st.write("")  # This adds a small vertical space
             st.markdown(
                 """
                 <div class="title-text">
