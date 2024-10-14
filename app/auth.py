@@ -9,7 +9,13 @@ def check_password():
         # Display the image in a centered column layout
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.image("assets/logo.jpg", width=350)
+            st.image("assets/logo.png", width=350)
+            st.markdown(
+                """
+                <h1 style="color: white; text-align: center; margin-bottom: 0;">Fly Me Away</h1>
+                """,
+                unsafe_allow_html=True
+            )
             with st.form("Credentials"):
                 st.text_input("Username", key="username")
                 st.text_input("Password", type="password", key="password")

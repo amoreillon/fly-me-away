@@ -2,11 +2,10 @@ import streamlit as st
 from datetime import datetime, timedelta
 import toml
 import time
+import hmac
 import pandas as pd
 from flight_search import get_access_token, get_cheapest_flight, filter_flights_by_time
-from ui_components import set_page_style, render_input_page, render_results_page
 from auth import check_password 
-
 
 
 # Determine if we are running in test or production
@@ -43,58 +42,189 @@ travel_class_default = params_config['search']['travel_class'].upper()
 departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
 return_time_option_default = params_config['search'].get('return_time_option', 'Any')
 
-# Streamlit UI
-
-# Set page config
-st.set_page_config(page_title="Fly Me Away", page_icon="✈️", layout="wide")
-
 # Apply custom styling
-set_page_style()
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #13133D;
+    }
+    div[data-testid="stExpander"] {
+        background-color: white;
+        border: none;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+    .streamlit-expanderHeader {
+        background-color: white !important;
+        color: #13133D !important;
+        border-bottom: none;
+        padding: 10px;
+        font-weight: bold;
+    }
+    .streamlit-expanderContent {
+        background-color: white !important;
+        border-top: none;
+        padding: 10px;
+    }
+    .stTextInput > div > div {
+        border-radius: 8px;
+    }
+    .stButton > button {
+        background-color: #FFA500;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        font-weight: bold;
+    }
+    .stButton > button:hover {
+        background-color: #FF8C00;
+    }
+    .stSelectbox > div > div, .stTextInput > div > div {
+        background-color: white;
+    }
+    h1, h2, h3 {
+        color: #000080;  # Changed from white to #000080
+    }
+    p {
+        color: #000080;
+    }
+    .orange-text {
+        color: #FFA500;
+        font-style: italic;
+    }
+    /* Specific styles for the login form */
+    [data-testid="stForm"] {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    [data-testid="stForm"] [data-testid="stVerticalBlock"] {
+        gap: 20px;
+    }
+    [data-testid="stForm"] .stTextInput > div > div {
+        background-color: white !important;
+    }
+    [data-testid="stForm"] .stTextInput input {
+        background-color: white !important;
+        color: #000080 !important;
+    }
+    .logo-title-container {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .title-text h1 {
+        color: white;
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+    .title-text p {
+        color: white;
+        margin-top: 0;
+    }
+    /* Styles for the output page */
+    .output-text {
+        color: white;
+    }
+    .stDataFrame {
+        color: white;
+    }
+    .stDataFrame [data-testid="stTable"] {
+        color: white;
+    }
+    /* Style for charts */
+    [data-testid="stScatterChart"] {
+        color: white;
+    }
+    [data-testid="stScatterChart"] text {
+        fill: white !important;
+    }
+    /* Style for tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #1E1E5A;
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        font-weight: 400;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #FFA500;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
+# Password check upon loading the page
 if not check_password():
     st.stop()
+
 
 if 'page' not in st.session_state:
     st.session_state['page'] = 'input'
 
 if st.session_state['page'] == 'input':
-    st.title("Fly Me Away")
+    # Create a container for the top section
+    top_container = st.container()
 
-    # Add description text below the title
-    st.markdown(
-        """
-        <p style='color: white;'>
-        Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. 
-        <span style='color: #FFA500; font-style: italic;'>Fly Me Away</span> looks up the best weekly prices.
-        </p>
-        """,
-        unsafe_allow_html=True
-    )
+    # Use columns for layout within the container
+    with top_container:
+        col1, col2 = st.columns([1, 3])  # Adjust the ratio as needed
+
+        with col1:
+            st.image("assets/logo.png", width=200)  # Adjust width as needed
+            st.write("")  # This adds a small vertical space
+
+        with col2:
+            st.write("")  # This adds a small vertical space
+            st.markdown(
+                """
+                <div class="title-text">
+                    <h1>Fly Me Away</h1>
+                    <p>
+                    Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. 
+                    <span class="orange-text">Fly Me Away</span> looks up the best weekly prices.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     # Flight Details Expander
-    with st.expander("**Flight Details**", expanded=True):
+    with st.expander("**Desired Flight**", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
             origin = st.text_input("Origin Airport Code (e.g., ZRH)", value=origin_default).upper()
             departure_day = st.selectbox("Day of Departure", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], index=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(departure_day_default))
             departure_time_option = st.selectbox(
-                "Select preferred departure time for outbound flight",
+                "Preferred time of departure flight",
                 ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
                 index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(departure_time_option_default)
             )
 
         with col2:
             destination = st.text_input("Destination Airport Code (e.g., LHR)", value=destination_default).upper()
-            number_of_nights = st.number_input("Nights to Stay", min_value=1, value=number_of_nights_default)
+            number_of_nights = st.number_input("Number of Nights", min_value=1, value=number_of_nights_default)
             return_time_option = st.selectbox(
-                "Select preferred departure time for return flight",
+                "Preferred time of the return flight",
                 ["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"],
                 index=["Any", "Morning (midnight to noon)", "Afternoon and evening (noon to midnight)", "Evening (6pm to midnight)"].index(return_time_option_default)
             )
 
     # Range of Travel Dates Expander
-    with st.expander("**Range of Travel Dates**", expanded=True):
+    with st.expander("**Possible Travel Time**", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
@@ -220,11 +350,10 @@ if st.session_state['page'] == 'input':
 
 # Results Page
 elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_state:
-    st.title("Flight Price Details")
+    st.markdown('<h1 class="output-text">Flight Price Details</h1>', unsafe_allow_html=True)
+    
     df = st.session_state['flight_prices']
-    df['departure_date'] = pd.to_datetime(df['departure_date']).dt.date
-    df['return_date'] = pd.to_datetime(df['return_date']).dt.date
-
+    
     # Highlight the best price in the results table
     best_price_index = df['price'].idxmin()
     if '🔥' not in df.columns:
@@ -237,12 +366,12 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     tab1, tab2 = st.tabs(["Table", "Chart"])
 
     with tab1:
-        st.write("### Detailed Flight Information")
+        st.markdown('<h3 class="output-text">Detailed Flight Information</h3>', unsafe_allow_html=True)
         styled_df = df.style.format({"price": "{:.2f}"}).apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
 
     with tab2:
-        st.write("### Price Trend Chart")
+        st.markdown('<h3 class="output-text">Price Trend Chart</h3>', unsafe_allow_html=True)
         df_chart = df.set_index('departure_date')['price']
         st.scatter_chart(df_chart)
 
