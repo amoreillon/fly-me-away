@@ -9,13 +9,24 @@ def check_password():
         # Display the image in a centered column layout
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.image("assets/logo.png", width=350)
             st.markdown(
                 """
                 <h1 style="color: white; text-align: center; margin-bottom: 0;">Fly Me Away</h1>
                 """,
                 unsafe_allow_html=True
             )
+            st.image("assets/logo.png", width=350)
+            
+            st.markdown(
+                """
+                <p style="color: white; text-align: center; margin-bottom: 0; font-size: 14px;">This is a pre-release version of the Fly Me Away app. This app is not monetized and does not collect any data from users. Please request access by sending an email to <a href="mailto:info@kineticequity.ch" style="color: #FFA500;">info@kineticequity.ch</a></p>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            # Add some space before the form
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             with st.form("Credentials"):
                 st.text_input("Username", key="username")
                 st.text_input("Password", type="password", key="password")
