@@ -161,6 +161,16 @@ st.markdown(
     .stTabs [aria-selected="true"] {
         background-color: #FFA500;
     }
+    /* New styles for white containers */
+    .white-container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .white-container h3 {
+        color: #000080;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -362,16 +372,13 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     def highlight_best_price(row):
         return ['background-color: lightgreen' if row.name == best_price_index else '' for _ in row]
 
-    # Tabs for different views
-    tab1, tab2 = st.tabs(["Table", "Chart"])
-
-    with tab1:
-        st.markdown('<h3 class="output-text">Detailed Flight Information</h3>', unsafe_allow_html=True)
+    # Detailed Flight Information Expander
+    with st.expander("**Detailed Flight Information**", expanded=True):
         styled_df = df.style.format({"price": "{:.2f}"}).apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
 
-    with tab2:
-        st.markdown('<h3 class="output-text">Price Trend Chart</h3>', unsafe_allow_html=True)
+    # Price Trend Chart Expander
+    with st.expander("**Price Trend Chart**", expanded=True):
         df_chart = df.set_index('departure_date')['price']
         st.scatter_chart(df_chart)
 
