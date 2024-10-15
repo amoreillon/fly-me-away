@@ -244,11 +244,11 @@ if st.session_state['page'] == 'input':
             end_date = st.date_input("End Date", datetime.now() + timedelta(days=90))  # Default to three months from tomorrow
 
     # Preferences Expander
-    with st.expander("**Preferences**", expanded=False):
+    with st.expander("**Preferences**", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
-            flight_type = st.selectbox("Flight Type", ["Direct only", "Including stopovers"], index=0 if direct_flight_default else 1)
+            flight_type = st.selectbox("Flight Type", ["Direct", "Including stopovers"], index=0 if direct_flight_default else 1)
         
         with col2:
             travel_class = st.selectbox("Select travel class", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(travel_class_default))
