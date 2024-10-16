@@ -4,3 +4,4 @@ requests
 pandas
 altair
 streamlit_extras
+pymongo
