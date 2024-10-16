@@ -6,7 +6,7 @@ import hmac
 import pandas as pd
 from flight_search import get_access_token, get_cheapest_flight, filter_flights_by_time
 from auth import check_password 
-#from streamlit_extras.buy_me_a_coffee import button
+from streamlit_extras.buy_me_a_coffee import button
 
 
 # Determine if we are running in test or production
@@ -364,9 +364,9 @@ if st.session_state['page'] == 'input':
     # Add space before the button
     st.write("")
     st.write("")
-    #col1, col2, col3 = st.columns(3)
-    #with col3:
-    #    button(username="amoreillon", floating=False, width=221)
+    col1, col2, col3 = st.columns(3)
+    with col3:
+        button(username="amoreillon", floating=False, width=221)
     
 # Results Page
 elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_state:
@@ -395,6 +395,6 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     if st.button("Back to Search"):
         st.session_state['page'] = 'input'
         st.rerun()
-    #col1, col2, col3 = st.columns(3)
-    #with col3:
-    #    button(username="amoreillon", floating=False, width=221)
+    col1, col2, col3 = st.columns(3)
+    with col3:
+        button(username="amoreillon", floating=False, width=221)
