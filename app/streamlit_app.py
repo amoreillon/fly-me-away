@@ -510,4 +510,3 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
 
 
 
-
