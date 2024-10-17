@@ -366,7 +366,7 @@ if st.session_state['page'] == 'input':
     st.write("")
     col1, col2, col3 = st.columns(3)
     with col3:
-        button(username="amoreillon", floating=False, width=221)
+        button(username="flymeaway", floating=False, width=221)
     
 # Results Page
 elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_state:
@@ -397,4 +397,4 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
         st.rerun()
     col1, col2, col3 = st.columns(3)
     with col3:
-        button(username="amoreillon", floating=False, width=221)
+        button(username="flymeaway", floating=False, width=221)
