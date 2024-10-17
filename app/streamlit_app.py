@@ -344,7 +344,7 @@ if st.session_state['page'] == 'input':
             access_token = get_access_token(api_key, api_secret, API_URL)
 
             # Convert flight_type to boolean for the API call
-            direct_flight = (flight_type == "Direct only")
+            direct_flight = (flight_type == "Direct")  # Changed from "Direct only" to "Direct"
 
             # Map departure day to weekday number
             day_mapping = {
@@ -384,6 +384,10 @@ if st.session_state['page'] == 'input':
                         # Filter flights based on preferred departure and return times
                         if flight_data['data']:
                             filtered_flights = filter_flights_by_time(flight_data['data'], departure_time_option, return_time_option)
+                            
+                            # Additional filter for direct flights if selected
+                            if direct_flight:
+                                filtered_flights = [f for f in filtered_flights if all(len(itinerary['segments']) == 1 for itinerary in f['itineraries'])]
                             
                             # Continue with the cheapest flight among filtered flights
                             if filtered_flights:
@@ -499,6 +503,9 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
 
 
 
