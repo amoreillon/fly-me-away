@@ -470,7 +470,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
             start_date = st.session_state.get('start_date')
             end_date = st.session_state.get('end_date')
             travel_period = f"{start_date.strftime('%Y-%m-%d') if start_date else 'N/A'} to {end_date.strftime('%Y-%m-%d') if end_date else 'N/A'}"
-            st.write(f"**Travel Period:** {travel_period}")
+            st.write(f"**Search Period:** {travel_period}")
         with col2:
             st.write(f"**Flight Type:** {st.session_state.get('flight_type', 'N/A')}")
             st.write(f"**Travel Class:** {st.session_state.get('travel_class', 'N/A')}")
