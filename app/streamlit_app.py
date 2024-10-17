@@ -214,7 +214,10 @@ def get_airport_full_name(code):
 # Function to get simplified airport name from code
 def get_airport_simple_name(code):
     airports_df = load_airport_data()
-    airport = airports_df[airports_df['code'] == code].iloc[0]
+    matching_airports = airports_df[airports_df['code'] == code]
+    if matching_airports.empty:
+        return f"Unknown ({code})"
+    airport = matching_airports.iloc[0]
     return f"{airport['city']} ({airport['code']})"
 
 # Initialize session state for default values
@@ -325,6 +328,18 @@ if st.session_state['page'] == 'input':
     # Main search button
     if st.button("Search Flights"):
         try:
+            # Store search parameters in session state
+            st.session_state['origin'] = origin
+            st.session_state['destination'] = destination
+            st.session_state['departure_day'] = departure_day
+            st.session_state['number_of_nights'] = number_of_nights
+            st.session_state['start_date'] = start_date
+            st.session_state['end_date'] = end_date
+            st.session_state['flight_type'] = flight_type
+            st.session_state['travel_class'] = travel_class
+            st.session_state['departure_time_option'] = departure_time_option
+            st.session_state['return_time_option'] = return_time_option
+
             # Get access token
             access_token = get_access_token(api_key, api_secret, API_URL)
 
@@ -440,6 +455,24 @@ if st.session_state['page'] == 'input':
 elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_state:
     st.markdown('<h1 class="output-text">Flight Price Details</h1>', unsafe_allow_html=True)
     
+    # New expander for input parameters
+    with st.expander("**Search Parameters**", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Origin:** {get_airport_simple_name(st.session_state.get('origin', ''))}")
+            st.write(f"**Destination:** {get_airport_simple_name(st.session_state.get('destination', ''))}")
+            st.write(f"**Departure Day:** {st.session_state.get('departure_day', 'N/A')}")
+            st.write(f"**Number of Nights:** {st.session_state.get('number_of_nights', 'N/A')}")
+            start_date = st.session_state.get('start_date')
+            end_date = st.session_state.get('end_date')
+            travel_period = f"{start_date.strftime('%Y-%m-%d') if start_date else 'N/A'} to {end_date.strftime('%Y-%m-%d') if end_date else 'N/A'}"
+            st.write(f"**Travel Period:** {travel_period}")
+        with col2:
+            st.write(f"**Flight Type:** {st.session_state.get('flight_type', 'N/A')}")
+            st.write(f"**Travel Class:** {st.session_state.get('travel_class', 'N/A')}")
+            st.write(f"**Departure Time:** {st.session_state.get('departure_time_option', 'N/A')}")
+            st.write(f"**Return Time:** {st.session_state.get('return_time_option', 'N/A')}")
+
     df = st.session_state['flight_prices']
     
     # Highlight the best price in the results table
@@ -466,3 +499,8 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
+
+
