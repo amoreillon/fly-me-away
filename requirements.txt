@@ -5,3 +5,4 @@ pandas
 altair
 streamlit_extras
 pymongo
+streamlit-searchbox

@@ -7,6 +7,7 @@ import pandas as pd
 from flight_search import get_access_token, get_cheapest_flight, filter_flights_by_time
 from auth import check_password 
 from streamlit_extras.buy_me_a_coffee import button
+from streamlit_searchbox import st_searchbox
 
 
 # Determine if we are running in test or production
@@ -172,18 +173,55 @@ st.markdown(
     .white-container h3 {
         color: #000080;
     }
+    .stSearchBox label {
+        color: #000080 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
 # Password check upon loading the page
-if not check_password():
-    st.stop()
+#if not check_password():
+#    st.stop()
 
 
 if 'page' not in st.session_state:
     st.session_state['page'] = 'input'
+
+# Load the airport data from CSV
+@st.cache_data
+def load_airport_data():
+    return pd.read_csv('data/airports.csv')
+
+# Modify the search_airport function to use the CSV data
+def search_airport(search_term):
+    airports_df = load_airport_data()
+    filtered_airports = airports_df[
+        airports_df['code'].str.contains(search_term.upper()) |
+        airports_df['name'].str.contains(search_term, case=False) |
+        airports_df['city'].str.contains(search_term, case=False) |
+        airports_df['country'].str.contains(search_term, case=False)
+    ]
+    return [f"{row['name']} ({row['code']}), {row['city']}, {row['country']}" for _, row in filtered_airports.iterrows()]
+
+# Function to get full airport name from code
+def get_airport_full_name(code):
+    airports_df = load_airport_data()
+    airport = airports_df[airports_df['code'] == code].iloc[0]
+    return f"{airport['name']} ({airport['code']}), {airport['city']}, {airport['country']}"
+
+# Function to get simplified airport name from code
+def get_airport_simple_name(code):
+    airports_df = load_airport_data()
+    airport = airports_df[airports_df['code'] == code].iloc[0]
+    return f"{airport['city']} ({airport['code']})"
+
+# Initialize session state for default values
+if 'origin_default' not in st.session_state:
+    st.session_state.origin_default = get_airport_simple_name('ZRH')
+if 'destination_default' not in st.session_state:
+    st.session_state.destination_default = get_airport_simple_name('OPO')
 
 if st.session_state['page'] == 'input':
     # Create a container for the top section
@@ -212,12 +250,43 @@ if st.session_state['page'] == 'input':
                 unsafe_allow_html=True
             )
 
-    # Flight Details Expander
-    with st.expander("**Desired Flight**", expanded=True):
+    # Destination Expander
+    with st.expander("**Destination**", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
-            origin = st.text_input("Origin Airport Code (e.g., ZRH)", value=origin_default).upper()
+            origin_full = st_searchbox(
+                search_airport,
+                key="origin_search",
+                placeholder="Search origin airport...",
+                default=st.session_state.origin_default,
+                label="Origin"
+            )
+            if origin_full:
+                st.session_state.origin_default = origin_full
+            origin = origin_full.split('(')[1].split(')')[0] if origin_full else ''
+            print(origin)
+            
+            
+        with col2:
+            destination_full = st_searchbox(
+                search_airport,
+                key="destination_search",
+                placeholder="Search destination airport...",
+                default=st.session_state.destination_default,
+                label="Destination"
+            )
+            if destination_full:
+                st.session_state.destination_default = destination_full
+            destination = destination_full.split('(')[1].split(')')[0] if destination_full else ''
+            print(destination)
+        
+            
+    # Flight Details Expander
+    with st.expander("**Departure Day and Duration**", expanded=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
             departure_day = st.selectbox("Day of Departure", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], index=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(departure_day_default))
             departure_time_option = st.selectbox(
                 "Preferred time of departure flight",
@@ -226,7 +295,6 @@ if st.session_state['page'] == 'input':
             )
 
         with col2:
-            destination = st.text_input("Destination Airport Code (e.g., LHR)", value=destination_default).upper()
             number_of_nights = st.number_input("Number of Nights", min_value=1, value=number_of_nights_default)
             return_time_option = st.selectbox(
                 "Preferred time of the return flight",
@@ -235,7 +303,7 @@ if st.session_state['page'] == 'input':
             )
 
     # Range of Travel Dates Expander
-    with st.expander("**Possible Travel Time**", expanded=True):
+    with st.expander("**Possible Travel Period**", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
