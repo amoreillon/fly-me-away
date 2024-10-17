@@ -479,22 +479,30 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
 
     df = st.session_state['flight_prices']
     
+    # Combine price and currency into a single column
+    df['Price'] = df.apply(lambda row: f"{row['price']:.2f} {row['currency']}", axis=1)
+    
+    # Reorder columns to have Price first, then remove individual price and currency columns
+    columns_order = ['Price', 'departure_date', 'departure_time', 'departure_flight', 'return_date', 'return_time', 'return_flight']
+    df = df[columns_order]
+    
     # Highlight the best price in the results table
-    best_price_index = df['price'].idxmin()
-    if '🔥' not in df.columns:
-        df.insert(0, '🔥', ['🔥' if i == best_price_index else '' for i in df.index])
+    best_price_index = df['Price'].apply(lambda x: float(x.split()[0])).idxmin()
+    df.insert(0, '🔥', ['🔥' if i == best_price_index else '' for i in df.index])
 
     def highlight_best_price(row):
         return ['background-color: lightgreen' if row.name == best_price_index else '' for _ in row]
 
     # Detailed Flight Information Expander
     with st.expander("**Detailed Flight Information**", expanded=True):
-        styled_df = df.style.format({"price": "{:.2f}"}).apply(highlight_best_price, axis=1)
+        styled_df = df.style.apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
 
     # Price Trend Chart Expander
     with st.expander("**Price Trend Chart**", expanded=True):
-        df_chart = df.set_index('departure_date')['price']
+        # Extract numeric price for charting
+        df['numeric_price'] = df['Price'].apply(lambda x: float(x.split()[0]))
+        df_chart = df.set_index('departure_date')['numeric_price']
         st.scatter_chart(df_chart)
 
     if st.button("Back to Search"):
@@ -503,6 +511,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
 
 
 
