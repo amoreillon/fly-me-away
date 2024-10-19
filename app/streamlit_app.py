@@ -4,8 +4,12 @@ import toml
 import time
 import hmac
 import pandas as pd
-from flight_search import get_access_token, get_cheapest_flight, filter_flights_by_time
+
+from search_flights import get_access_token, get_cheapest_flight
+from filter_flights import filter_flights_by_time
+from lookup_airports import search_airport, get_airport_simple_name, load_airport_data
 from auth import check_password 
+
 from streamlit_extras.buy_me_a_coffee import button
 from streamlit_searchbox import st_searchbox
 
@@ -185,40 +189,8 @@ st.markdown(
 #if not check_password():
 #    st.stop()
 
-
 if 'page' not in st.session_state:
     st.session_state['page'] = 'input'
-
-# Load the airport data from CSV
-@st.cache_data
-def load_airport_data():
-    return pd.read_csv('data/airports.csv')
-
-# Modify the search_airport function to use the CSV data
-def search_airport(search_term):
-    airports_df = load_airport_data()
-    filtered_airports = airports_df[
-        airports_df['code'].str.contains(search_term.upper()) |
-        airports_df['name'].str.contains(search_term, case=False) |
-        airports_df['city'].str.contains(search_term, case=False) |
-        airports_df['country'].str.contains(search_term, case=False)
-    ]
-    return [f"{row['name']} ({row['code']}), {row['city']}, {row['country']}" for _, row in filtered_airports.iterrows()]
-
-# Function to get full airport name from code
-def get_airport_full_name(code):
-    airports_df = load_airport_data()
-    airport = airports_df[airports_df['code'] == code].iloc[0]
-    return f"{airport['name']} ({airport['code']}), {airport['city']}, {airport['country']}"
-
-# Function to get simplified airport name from code
-def get_airport_simple_name(code):
-    airports_df = load_airport_data()
-    matching_airports = airports_df[airports_df['code'] == code]
-    if matching_airports.empty:
-        return f"Unknown ({code})"
-    airport = matching_airports.iloc[0]
-    return f"{airport['city']} ({airport['code']})"
 
 # Initialize session state for default values
 if 'origin_default' not in st.session_state:
@@ -445,8 +417,6 @@ if st.session_state['page'] == 'input':
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
-
-
 
     # Add space before the button
     st.write("")

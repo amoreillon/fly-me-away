@@ -1,8 +1,6 @@
 import requests
 from datetime import datetime, timedelta
 
-
-
 def get_access_token(api_key, api_secret, api_url):
     url = f"{api_url}/v1/security/oauth2/token"
     payload = {
@@ -70,7 +68,3 @@ def filter_flights_by_time(flights, departure_time_option, return_time_option, d
             filtered_flights.append(flight)
 
     return filtered_flights
-
-
-
-
