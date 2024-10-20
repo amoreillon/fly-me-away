@@ -23,7 +23,7 @@ def get_cheapest_flight(access_token, origin, destination, departure_date, retur
         'departureDate': departure_date,
         'returnDate': return_date,
         'adults': 1,
-        'max': 30,  
+        'max': 50,  
         'nonStop': str(direct_flight).lower(),
         'travelClass': travel_class
     }
@@ -35,9 +35,8 @@ def get_cheapest_flight(access_token, origin, destination, departure_date, retur
     else:
         raise Exception(f"Error: {response.status_code} - {response.text}")
 
-
 def filter_flights_by_time(flights, departure_time_option, return_time_option, direct_flight=False):
-    """Filters flight segments based on the selected departure and return time options and direct flight preference."""
+    #Filters flight segments based on the selected departure and return time options and direct flight preference.
     filtered_flights = []
     for flight in flights:
         # Check if the flight is direct when direct_flight is True

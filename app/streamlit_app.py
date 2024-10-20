@@ -5,9 +5,8 @@ import time
 import hmac
 import pandas as pd
 
-from search_flights import get_access_token, get_cheapest_flight
-from filter_flights import filter_flights_by_time
-from lookup_airports import search_airport, get_airport_simple_name, load_airport_data
+from search_flights import get_access_token, get_cheapest_flight, filter_flights_by_time
+from lookup_airports import search_airport
 from auth import check_password 
 
 from streamlit_extras.buy_me_a_coffee import button
@@ -39,8 +38,8 @@ else:
 
 # Load default search parameters from parameters.toml
 params_config = toml.load('config/parameters.toml')
-origin_default = params_config['search']['origin']
-destination_default = params_config['search']['destination']
+#origin_default = params_config['search']['origin']
+#destination_default = params_config['search']['destination']
 departure_day_default = params_config['search']['departure_day'].capitalize()
 number_of_nights_default = params_config['search']['number_of_nights']
 direct_flight_default = params_config['search']['direct_flight']
@@ -48,13 +47,22 @@ travel_class_default = params_config['search']['travel_class'].upper()
 departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
 return_time_option_default = params_config['search'].get('return_time_option', 'Any')
 
-# Apply custom styling
+#  Styling
 st.markdown(
     """
     <style>
+    /* Overall Style */
     .stApp {
         background-color: #13133D;
     }
+    h1, h2, h3 {
+        color: #000080;
+    }
+    p {
+        color: #000080;
+    }
+
+    /* Expanders */
     div[data-testid="stExpander"] {
         background-color: white;
         border: none;
@@ -91,16 +99,11 @@ st.markdown(
     .stSelectbox > div > div, .stTextInput > div > div {
         background-color: white;
     }
-    h1, h2, h3 {
-        color: #000080;  # Changed from white to #000080
-    }
-    p {
-        color: #000080;
-    }
     .orange-text {
         color: #FFA500;
         font-style: italic;
     }
+
     /* Specific styles for the login form */
     [data-testid="stForm"] {
         background-color: white;
@@ -131,6 +134,7 @@ st.markdown(
         color: white;
         margin-top: 0;
     }
+    
     /* Styles for the output page */
     .output-text {
         color: white;
@@ -148,38 +152,6 @@ st.markdown(
     [data-testid="stScatterChart"] text {
         fill: white !important;
     }
-    /* Style for tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #1E1E5A;
-        border-radius: 4px;
-        color: white;
-        font-size: 14px;
-        font-weight: 400;
-        align-items: center;
-        justify-content: center;
-        margin-top: 2px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #FFA500;
-    }
-    /* New styles for white containers */
-    .white-container {
-        background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-    }
-    .white-container h3 {
-        color: #000080;
-    }
-    .stSearchBox label {
-        color: #000080 !important;
-    }
     </style>
     """,
     unsafe_allow_html=True
@@ -189,14 +161,12 @@ st.markdown(
 #if not check_password():
 #    st.stop()
 
+# Modify search_airport to use the loaded airport_data
+def search_airport_wrapper(query: str):
+    return search_airport(query)  
+
 if 'page' not in st.session_state:
     st.session_state['page'] = 'input'
-
-# Initialize session state for default values
-if 'origin_default' not in st.session_state:
-    st.session_state.origin_default = get_airport_simple_name('ZRH')
-if 'destination_default' not in st.session_state:
-    st.session_state.destination_default = get_airport_simple_name('OPO')
 
 if st.session_state['page'] == 'input':
     # Create a container for the top section
@@ -231,30 +201,28 @@ if st.session_state['page'] == 'input':
 
         with col1:
             origin_full = st_searchbox(
-                search_airport,
-                key="origin_search",
-                placeholder="Search origin airport...",
-                default=st.session_state.origin_default,
-                label="Origin"
-            )
-            if origin_full:
-                st.session_state.origin_default = origin_full
+            search_airport_wrapper,
+            key="origin_search",
+            placeholder="Search origin airport...",
+            default='Zürich Airport (ZRH), Zurich, Switzerland',
+            label="Origin"
+        )
+        if origin_full:
             origin = origin_full.split('(')[1].split(')')[0] if origin_full else ''
             print(origin)
             
             
         with col2:
             destination_full = st_searchbox(
-                search_airport,
+                search_airport_wrapper,
                 key="destination_search",
                 placeholder="Search destination airport...",
-                default=st.session_state.destination_default,
+                default='Francisco de Sá Carneiro Airport (OPO), Porto, Portugal',
                 label="Destination"
             )
             if destination_full:
-                st.session_state.destination_default = destination_full
-            destination = destination_full.split('(')[1].split(')')[0] if destination_full else ''
-            print(destination)
+                destination = destination_full.split('(')[1].split(')')[0] if destination_full else ''
+                print(destination)
         
             
     # Flight Details Expander
@@ -297,7 +265,7 @@ if st.session_state['page'] == 'input':
         with col2:
             travel_class = st.selectbox("Select travel class", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(travel_class_default))
 
-    # Main search button
+    # Results retrieval
     if st.button("Search Flights"):
         try:
             # Store search parameters in session state
@@ -316,7 +284,7 @@ if st.session_state['page'] == 'input':
             access_token = get_access_token(api_key, api_secret, API_URL)
 
             # Convert flight_type to boolean for the API call
-            direct_flight = (flight_type == "Direct")  # Changed from "Direct only" to "Direct"
+            direct_flight = (flight_type == "Direct")  
 
             # Map departure day to weekday number
             day_mapping = {
@@ -346,7 +314,7 @@ if st.session_state['page'] == 'input':
 
                     rate_limit_counter = 0
                     try:
-                        # Fetch cheapest flight
+                        # Fetch flights
                         flight_data = get_cheapest_flight(
                             access_token, origin, destination,
                             departure_date_str, return_date_str,
@@ -399,7 +367,7 @@ if st.session_state['page'] == 'input':
                             break
 
                     # Pause to respect rate limit
-                    time.sleep(0.5)
+                    time.sleep(0.1)
 
                 # Update progress
                 progress_counter += 1
@@ -420,7 +388,6 @@ if st.session_state['page'] == 'input':
 
     # Add space before the button
     st.write("")
-    st.write("")
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
@@ -433,8 +400,8 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     with st.expander("**Search Parameters**", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            st.write(f"**Origin:** {get_airport_simple_name(st.session_state.get('origin', ''))}")
-            st.write(f"**Destination:** {get_airport_simple_name(st.session_state.get('destination', ''))}")
+            st.write(f"**Origin:** {st.session_state.get('origin', 'N/A')}")
+            st.write(f"**Destination:** {st.session_state.get('destination', 'N/A')}")
             st.write(f"**Departure Day:** {st.session_state.get('departure_day', 'N/A')}")
             st.write(f"**Number of Nights:** {st.session_state.get('number_of_nights', 'N/A')}")
             start_date = st.session_state.get('start_date')
@@ -481,11 +448,3 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
-
-
-
-
-
-
-
-
