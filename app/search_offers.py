@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
 
 # All functions required to identify cheapest offers on a given day and route
 
@@ -116,3 +116,8 @@ def filter_offers_by_time(parsed_offers, departure_time_option, return_time_opti
         #print("---")
     
     return filtered_offers
+
+def get_cheapest_offer(offers):
+    if not offers:
+        return None
+    return min(offers, key=lambda x: float(x['price']))

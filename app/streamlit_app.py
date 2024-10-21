@@ -5,7 +5,7 @@ import time
 import hmac
 import pandas as pd
 
-from search_flights import get_access_token, get_cheapest_flight, filter_flights_by_time
+from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer
 from lookup_airports import search_airport
 from auth import check_password 
 
@@ -19,10 +19,8 @@ environment = st.secrets.get("environment", "production")  # Defaults to product
 # Set API endpoint based on the environment
 if environment == "test":
     API_URL = "https://test.api.amadeus.com"
-    print("Running in test mode")
 else:
     API_URL = "https://api.amadeus.com"
-    print("Running in production mode")
 
 # Load API credentials
 if "api" in st.secrets:
@@ -38,14 +36,15 @@ else:
 
 # Load default search parameters from parameters.toml
 params_config = toml.load('config/parameters.toml')
-#origin_default = params_config['search']['origin']
-#destination_default = params_config['search']['destination']
+origin_default = params_config['search']['origin']
+destination_default = params_config['search']['destination']
 departure_day_default = params_config['search']['departure_day'].capitalize()
 number_of_nights_default = params_config['search']['number_of_nights']
 direct_flight_default = params_config['search']['direct_flight']
 travel_class_default = params_config['search']['travel_class'].upper()
 departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
 return_time_option_default = params_config['search'].get('return_time_option', 'Any')
+
 
 #  Styling
 st.markdown(
@@ -204,12 +203,11 @@ if st.session_state['page'] == 'input':
             search_airport_wrapper,
             key="origin_search",
             placeholder="Search origin airport...",
-            default='Zürich Airport (ZRH), Zurich, Switzerland',
+            default=origin_default,
             label="Origin"
         )
         if origin_full:
             origin = origin_full.split('(')[1].split(')')[0] if origin_full else ''
-            print(origin)
             
             
         with col2:
@@ -217,12 +215,11 @@ if st.session_state['page'] == 'input':
                 search_airport_wrapper,
                 key="destination_search",
                 placeholder="Search destination airport...",
-                default='Francisco de Sá Carneiro Airport (OPO), Porto, Portugal',
+                default=destination_default,
                 label="Destination"
             )
             if destination_full:
                 destination = destination_full.split('(')[1].split(')')[0] if destination_full else ''
-                print(destination)
         
             
     # Flight Details Expander
@@ -284,27 +281,34 @@ if st.session_state['page'] == 'input':
             access_token = get_access_token(api_key, api_secret, API_URL)
 
             # Convert flight_type to boolean for the API call
-            direct_flight = (flight_type == "Direct")  
+            direct_flight = (str(flight_type == "Direct").lower())  
 
             # Map departure day to weekday number
             day_mapping = {
-                'Monday': 0,
-                'Tuesday': 1,
-                'Wednesday': 2,
-                'Thursday': 3,
-                'Friday': 4,
-                'Saturday': 5,
-                'Sunday': 6
+                'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
+                'Friday': 4, 'Saturday': 5, 'Sunday': 6
             }
             departure_day_num = day_mapping[departure_day]
+
+            # Map time of departure and return to numbers
+            time_mapping = {
+                "Any": 0,
+                "Morning (midnight to noon)": 1,
+                "Afternoon and evening (noon to midnight)": 2,
+                "Evening (6pm to midnight)": 3
+            }
+
+            departure_time_option_num = time_mapping[departure_time_option]
+            return_time_option_num = time_mapping[return_time_option]
 
             current_date = start_date
             flight_prices = []  # Collect data for table and plotting
 
             # Initialize progress bar
-            total_days = (end_date - start_date).days + 1  # Including the end date in the count
+            total_days = (end_date - start_date).days + 1
             progress_bar = st.progress(0)
             progress_counter = 0
+
 
             while current_date <= end_date:
                 if current_date.weekday() == departure_day_num:
@@ -312,56 +316,50 @@ if st.session_state['page'] == 'input':
                     return_date = current_date + timedelta(days=number_of_nights)
                     return_date_str = return_date.strftime('%Y-%m-%d')
 
-                    rate_limit_counter = 0
                     try:
-                        # Fetch flights
-                        flight_data = get_cheapest_flight(
+                        # Fetch offers
+                        offers_data = get_offers(
                             access_token, origin, destination,
                             departure_date_str, return_date_str,
                             direct_flight, travel_class, API_URL
                         )
 
-                        # Filter flights based on preferred departure and return times
-                        if flight_data['data']:
-                            filtered_flights = filter_flights_by_time(flight_data['data'], departure_time_option, return_time_option)
-                            
-                            # Additional filter for direct flights if selected
-                            if direct_flight:
-                                filtered_flights = [f for f in filtered_flights if all(len(itinerary['segments']) == 1 for itinerary in f['itineraries'])]
-                            
-                            # Continue with the cheapest flight among filtered flights
-                            if filtered_flights:
-                                cheapest_flight = min(filtered_flights, key=lambda x: float(x['price']['total']))
+                        # Parse offers data
+                        parsed_offers = parse_offers(offers_data)
 
-                                # Extract departure flight details (all segments)
-                                departure_segments = cheapest_flight['itineraries'][0]['segments']
-                                departure_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in departure_segments])
-                                departure_time = departure_segments[0]['departure']['at']
+                        # Filter offers based on preferred departure and return times
+                        filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
 
-                                # Extract return flight details (all segments)
-                                return_segments = cheapest_flight['itineraries'][1]['segments']
-                                return_flights = ", ".join([seg['carrierCode'] + " " + seg['number'] for seg in return_segments])
-                                return_time = return_segments[0]['departure']['at']
+                        # Get the cheapest offer
+                        cheapest_offer = get_cheapest_offer(filtered_offers)
 
-                                # Store data for the table with price and currency
-                                flight_prices.append({
-                                    "departure_date": departure_date_str,
-                                    "departure_time": departure_time.split('T')[1][:5],
-                                    "departure_flight": departure_flights,
-                                    "return_date": return_date_str,
-                                    "return_time": return_time.split('T')[1][:5],
-                                    "return_flight": return_flights,
-                                    "price": round(float(cheapest_flight['price']['total']), 2),
-                                    "currency": cheapest_flight['price']['currency']
-                                })
+                        if cheapest_offer:
+                            # Extract departure flight details
+                            departure_segments = cheapest_offer['itineraries'][0]['segments']
+                            departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
+                            departure_time = departure_segments[0]['departure']['at']
+
+                            # Extract return flight details
+                            return_segments = cheapest_offer['itineraries'][1]['segments']
+                            return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
+                            return_time = return_segments[0]['departure']['at']
+
+                            # Store data for the table
+                            flight_prices.append({
+                                "departure_date": departure_date_str,
+                                "departure_time": departure_time.strftime('%H:%M'),
+                                "departure_flight": departure_flights,
+                                "return_date": return_date_str,
+                                "return_time": return_time.strftime('%H:%M'),
+                                "return_flight": return_flights,
+                                "price": round(cheapest_offer['price'], 2),
+                                "currency": cheapest_offer['currency']
+                            })
 
                     except Exception as e:
                         if '429' in str(e):
-                            rate_limit_counter += 1
-                            if rate_limit_counter >= 3:
-                                st.warning("Rate limit reached. Waiting for 60 seconds...")
-                                time.sleep(60)
-                                rate_limit_counter = 0
+                            st.warning("Rate limit reached. Waiting for 60 seconds...")
+                            time.sleep(60)
                         else:
                             st.error(f"An error occurred while fetching flight data: {e}")
                             break
@@ -371,7 +369,7 @@ if st.session_state['page'] == 'input':
 
                 # Update progress
                 progress_counter += 1
-                progress_bar.progress(min(progress_counter / total_days, 1.0))  # Ensure the progress value does not exceed 1.0
+                progress_bar.progress(min(progress_counter / total_days, 1.0))
 
                 current_date += timedelta(days=1)
 
@@ -448,3 +446,4 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+

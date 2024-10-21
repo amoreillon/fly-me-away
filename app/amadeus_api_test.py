@@ -7,7 +7,7 @@ from datetime import datetime, time
 import csv
 import time
 
-from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time
+from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer
 
 # Load secrets from TOML file in .streamlit folder
 secrets_path = os.path.join(os.path.dirname(__file__), '..', '.streamlit', 'secrets.toml')

@@ -1,6 +1,6 @@
 [search]
-origin = "ZRH"
-destination = "OPO"
+origin = "Zürich Airport (ZRH), Zurich, Switzerland"
+destination = "Francisco de Sá Carneiro Airport (OPO), Porto, Portugal"
 departure_day = "friday"
 number_of_nights = 2
 direct_flight = true
