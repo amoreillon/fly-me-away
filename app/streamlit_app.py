@@ -4,10 +4,12 @@ import toml
 import time
 import hmac
 import pandas as pd
+import psycopg2
 
 from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer
 from lookup_airports import search_airport
 from auth import check_password 
+from db_operations import insert_search_data, create_tables, get_db_connection
 
 from streamlit_extras.buy_me_a_coffee import button
 from streamlit_searchbox import st_searchbox
@@ -60,7 +62,6 @@ st.markdown(
     p {
         color: #000080;
     }
-
     /* Expanders */
     div[data-testid="stExpander"] {
         background-color: white;
@@ -81,9 +82,7 @@ st.markdown(
         border-top: none;
         padding: 10px;
     }
-    .stTextInput > div > div {
-        border-radius: 8px;
-    }
+    /* Buttons */
     .stButton > button {
         background-color: #FFA500;
         color: white;
@@ -95,14 +94,11 @@ st.markdown(
     .stButton > button:hover {
         background-color: #FF8C00;
     }
-    .stSelectbox > div > div, .stTextInput > div > div {
-        background-color: white;
-    }
+    /* Custom text for FMA brand */
     .orange-text {
         color: #FFA500;
         font-style: italic;
     }
-
     /* Specific styles for the login form */
     [data-testid="stForm"] {
         background-color: white;
@@ -119,6 +115,7 @@ st.markdown(
         background-color: white !important;
         color: #000080 !important;
     }
+    /* Title section */
     .logo-title-container {
         display: flex;
         align-items: center;
@@ -133,11 +130,11 @@ st.markdown(
         color: white;
         margin-top: 0;
     }
-    
     /* Styles for the output page */
     .output-text {
         color: white;
     }
+    /* Style for dataframes */
     .stDataFrame {
         color: white;
     }
@@ -155,6 +152,9 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Create tables if they don't exist
+create_tables()
 
 # Password check upon loading the page
 #if not check_password():
@@ -379,7 +379,7 @@ if st.session_state['page'] == 'input':
                 st.session_state['page'] = 'results'
                 st.rerun()  # Redirect to results page if available
             else:
-                st.write("No flight data available for the selected date range.")
+                st.markdown('<p style="color: white;">No flight data available for the selected date range.</p>', unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
@@ -446,4 +446,9 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
+
+
 
