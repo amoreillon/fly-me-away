@@ -41,20 +41,30 @@ def create_tables():
             conn.close()
 
 # Function to insert search data
-def insert_search_data(search_inputs, flight_prices, all_parsed_offers):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    table_name = f"searches_{environment}"
-    cur.execute(f"""
-        INSERT INTO {table_name} (search_inputs, flight_prices, all_parsed_offers)
-        VALUES (%s, %s, %s)
-        RETURNING id
-    """, (Json(search_inputs), Json(flight_prices), Json(all_parsed_offers)))
-    search_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return search_id
+def insert_search_data(search_inputs, flight_prices, parsed_offers):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        table_name = f"searches_{environment}"
+        cur.execute(f"""
+            INSERT INTO {table_name} (search_inputs, flight_prices, parsed_offers)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (Json(search_inputs), Json(flight_prices), Json(parsed_offers)))
+        search_id = cur.fetchone()[0]
+        conn.commit()
+        st.success(f"Data successfully inserted with ID: {search_id}")
+        return search_id
+    except Exception as e:
+        st.error(f"An error occurred while inserting data: {e}")
+        if conn:
+            conn.rollback()
+        return None
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 def get_past_searches(limit=10):
     conn = get_db_connection()

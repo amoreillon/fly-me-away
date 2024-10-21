@@ -153,9 +153,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Create tables if they don't exist
-create_tables()
-
 # Password check upon loading the page
 #if not check_password():
 #    st.stop()
@@ -265,17 +262,24 @@ if st.session_state['page'] == 'input':
     # Results retrieval
     if st.button("Search Flights"):
         try:
+            # Create tables if they don't exist
+            create_tables()
+
             # Store search parameters in session state
-            st.session_state['origin'] = origin
-            st.session_state['destination'] = destination
-            st.session_state['departure_day'] = departure_day
-            st.session_state['number_of_nights'] = number_of_nights
-            st.session_state['start_date'] = start_date
-            st.session_state['end_date'] = end_date
-            st.session_state['flight_type'] = flight_type
-            st.session_state['travel_class'] = travel_class
-            st.session_state['departure_time_option'] = departure_time_option
-            st.session_state['return_time_option'] = return_time_option
+            search_inputs = {
+                'origin': origin,
+                'destination': destination,
+                'departure_day': departure_day,
+                'number_of_nights': number_of_nights,
+                'start_date': str(start_date),
+                'end_date': str(end_date),
+                'flight_type': flight_type,
+                'travel_class': travel_class,
+                'departure_time_option': departure_time_option,
+                'return_time_option': return_time_option,
+                'environment': environment  # Add environment to search inputs
+            }
+            st.session_state['search_inputs'] = search_inputs
 
             # Get access token
             access_token = get_access_token(api_key, api_secret, API_URL)
@@ -365,7 +369,10 @@ if st.session_state['page'] == 'input':
                             break
 
                     # Pause to respect rate limit
-                    time.sleep(0.1)
+                    if environment == "test":
+                        time.sleep(0.5)
+                    else:
+                        time.sleep(0.05)
 
                 # Update progress
                 progress_counter += 1
@@ -376,6 +383,11 @@ if st.session_state['page'] == 'input':
             # Store flight data in session state for the results page
             if flight_prices:
                 st.session_state['flight_prices'] = pd.DataFrame(flight_prices)
+
+                # Insert data into the database
+                #search_id = insert_search_data(search_inputs, flight_prices, parsed_offers)
+                #st.session_state['search_id'] = search_id
+
                 st.session_state['page'] = 'results'
                 st.rerun()  # Redirect to results page if available
             else:
@@ -398,19 +410,22 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     with st.expander("**Search Parameters**", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            st.write(f"**Origin:** {st.session_state.get('origin', 'N/A')}")
-            st.write(f"**Destination:** {st.session_state.get('destination', 'N/A')}")
-            st.write(f"**Departure Day:** {st.session_state.get('departure_day', 'N/A')}")
-            st.write(f"**Number of Nights:** {st.session_state.get('number_of_nights', 'N/A')}")
-            start_date = st.session_state.get('start_date')
-            end_date = st.session_state.get('end_date')
-            travel_period = f"{start_date.strftime('%Y-%m-%d') if start_date else 'N/A'} to {end_date.strftime('%Y-%m-%d') if end_date else 'N/A'}"
+            # Assuming search_inputs is stored in st.session_state['search_inputs']
+            search_inputs = st.session_state.get('search_inputs', {})
+
+            st.write(f"**Origin:** {search_inputs.get('origin', 'N/A')}")
+            st.write(f"**Destination:** {search_inputs.get('destination', 'N/A')}")
+            st.write(f"**Departure Day:** {search_inputs.get('departure_day', 'N/A')}")
+            st.write(f"**Number of Nights:** {search_inputs.get('number_of_nights', 'N/A')}")
+            start_date = search_inputs.get('start_date', 'N/A')
+            end_date = search_inputs.get('end_date', 'N/A')
+            travel_period = f"{start_date} to {end_date}"
             st.write(f"**Search Period:** {travel_period}")
         with col2:
-            st.write(f"**Flight Type:** {st.session_state.get('flight_type', 'N/A')}")
-            st.write(f"**Travel Class:** {st.session_state.get('travel_class', 'N/A')}")
-            st.write(f"**Departure Time:** {st.session_state.get('departure_time_option', 'N/A')}")
-            st.write(f"**Return Time:** {st.session_state.get('return_time_option', 'N/A')}")
+            st.write(f"**Flight Type:** {search_inputs.get('flight_type', 'N/A')}")
+            st.write(f"**Travel Class:** {search_inputs.get('travel_class', 'N/A')}")
+            st.write(f"**Departure Time:** {search_inputs.get('departure_time_option', 'N/A')}")
+            st.write(f"**Return Time:** {search_inputs.get('return_time_option', 'N/A')}")
 
     df = st.session_state['flight_prices']
     
@@ -446,9 +461,5 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
-
-
-
-
 
 
