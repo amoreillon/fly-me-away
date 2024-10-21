@@ -384,6 +384,10 @@ if st.session_state['page'] == 'input':
             if flight_prices:
                 st.session_state['flight_prices'] = pd.DataFrame(flight_prices)
 
+                print("Search Inputs:", search_inputs)
+                print("Flight Prices:", flight_prices)
+                print("All Parsed Offers:", parsed_offers)
+
                 # Insert data into the database
                 #search_id = insert_search_data(search_inputs, flight_prices, parsed_offers)
                 #st.session_state['search_id'] = search_id
