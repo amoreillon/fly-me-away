@@ -9,10 +9,12 @@ import psycopg2
 from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer
 from lookup_airports import search_airport
 from auth import check_password 
-from db_operations import insert_search_data, create_tables, get_db_connection
+from db_operations import insert_data, create_tables
 
 from streamlit_extras.buy_me_a_coffee import button
 from streamlit_searchbox import st_searchbox
+
+import sys
 
 
 # Determine if we are running in test or production
@@ -262,7 +264,7 @@ if st.session_state['page'] == 'input':
     # Results retrieval
     if st.button("Search Flights"):
         try:
-            # Create tables if they don't exist
+            # Ensure tables exist
             create_tables()
 
             # Store search parameters in session state
@@ -383,22 +385,38 @@ if st.session_state['page'] == 'input':
             # Store flight data in session state for the results page
             if flight_prices:
                 st.session_state['flight_prices'] = pd.DataFrame(flight_prices)
+                print("Preparing to save search data...", file=sys.stderr)
+                
+                # Insert search inputs
+                search_inputs_id = insert_data(search_inputs, 'search_inputs')
+                print(f"Search inputs saved with ID: {search_inputs_id}", file=sys.stderr)
 
-                print("Search Inputs:", search_inputs)
-                print("Flight Prices:", flight_prices)
-                print("All Parsed Offers:", parsed_offers)
+                # Insert flight prices
+                flight_prices_id = insert_data(flight_prices, 'flight_prices')
+                print(f"Flight prices saved with ID: {flight_prices_id}", file=sys.stderr)
 
-                # Insert data into the database
-                #search_id = insert_search_data(search_inputs, flight_prices, parsed_offers)
-                #st.session_state['search_id'] = search_id
+                # Insert parsed offers
+                parsed_offers_id = insert_data(parsed_offers, 'parsed_offers')
+                print(f"Parsed offers saved with ID: {parsed_offers_id}", file=sys.stderr)
+
+                if search_inputs_id and flight_prices_id and parsed_offers_id:
+                    st.success("All search data saved successfully!")
+                    st.session_state['search_ids'] = {
+                        'search_inputs': search_inputs_id,
+                        'flight_prices': flight_prices_id,
+                        'parsed_offers': parsed_offers_id
+                    }
+                else:
+                    st.error("Failed to save some or all search data.")
 
                 st.session_state['page'] = 'results'
                 st.rerun()  # Redirect to results page if available
             else:
-                st.markdown('<p style="color: white;">No flight data available for the selected date range.</p>', unsafe_allow_html=True)
+                st.write("No flight data available for the selected date range.")
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
+            print(f"Error details: {e}", file=sys.stderr)
 
     # Add space before the button
     st.write("")
@@ -465,5 +483,6 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
 
 

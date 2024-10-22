@@ -2,6 +2,7 @@ import streamlit as st
 import psycopg2
 from psycopg2.extras import Json
 import json
+import sys
 
 
 # Determine if we are running in test or production
@@ -18,53 +19,28 @@ def get_db_connection():
 
 # Function to create tables if they don't exist
 def create_tables():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    tables = ['search_inputs', 'flight_prices', 'parsed_offers']
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        table_name = f"searches_{environment}"
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS {table_name} (
-                id SERIAL PRIMARY KEY,
-                search_inputs JSONB,
-                flight_prices JSONB,
-                all_parsed_offers JSONB,
-                search_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        for table in tables:
+            full_table_name = f"{table}_{environment}"
+            cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS {full_table_name} (
+                    id SERIAL PRIMARY KEY,
+                    data JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
         conn.commit()
+        print("Tables created successfully", file=sys.stderr)
     except Exception as e:
-        st.error(f"An error occurred while creating tables: {e}")
+        print(f"An error occurred while creating tables: {e}", file=sys.stderr)
+        conn.rollback()
     finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+        cur.close()
+        conn.close()
 
-# Function to insert search data
-def insert_search_data(search_inputs, flight_prices, parsed_offers):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        table_name = f"searches_{environment}"
-        cur.execute(f"""
-            INSERT INTO {table_name} (search_inputs, flight_prices, parsed_offers)
-            VALUES (%s, %s, %s)
-            RETURNING id
-        """, (Json(search_inputs), Json(flight_prices), Json(parsed_offers)))
-        search_id = cur.fetchone()[0]
-        conn.commit()
-        st.success(f"Data successfully inserted with ID: {search_id}")
-        return search_id
-    except Exception as e:
-        st.error(f"An error occurred while inserting data: {e}")
-        if conn:
-            conn.rollback()
-        return None
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 def get_past_searches(limit=10):
     conn = get_db_connection()
@@ -80,3 +56,25 @@ def get_past_searches(limit=10):
     cur.close()
     conn.close()
     return searches
+
+def insert_data(data, table_name):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    full_table_name = f"{table_name}_{environment}"
+    try:
+        cur.execute(f"""
+            INSERT INTO {full_table_name} (data)
+            VALUES (%s)
+            RETURNING id
+        """, (Json(data),))
+        record_id = cur.fetchone()[0]
+        conn.commit()
+        print(f"Data successfully inserted into {full_table_name} with ID: {record_id}", file=sys.stderr)
+        return record_id
+    except Exception as e:
+        print(f"An error occurred while inserting data into {full_table_name}: {e}", file=sys.stderr)
+        conn.rollback()
+        return None
+    finally:
+        cur.close()
+        conn.close()
