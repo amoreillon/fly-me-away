@@ -16,7 +16,6 @@ from streamlit_searchbox import st_searchbox
 
 import sys
 
-
 # Determine if we are running in test or production
 environment = st.secrets.get("environment", "production")  # Defaults to production if not set
 
@@ -283,6 +282,10 @@ if st.session_state['page'] == 'input':
             }
             st.session_state['search_inputs'] = search_inputs
 
+            # Record search inputs
+            if search_inputs:
+                search_inputs_id = insert_data(search_inputs, 'search_inputs')
+
             # Get access token
             access_token = get_access_token(api_key, api_secret, API_URL)
 
@@ -304,10 +307,11 @@ if st.session_state['page'] == 'input':
                 "Evening (6pm to midnight)": 3
             }
 
+            # Map departure and return time options to numbers
             departure_time_option_num = time_mapping[departure_time_option]
             return_time_option_num = time_mapping[return_time_option]
-
-            current_date = start_date
+        
+            current_date = start_date # Initialize current date
             flight_prices = []  # Collect data for table and plotting
 
             # Initialize progress bar
@@ -332,6 +336,10 @@ if st.session_state['page'] == 'input':
 
                         # Parse offers data
                         parsed_offers = parse_offers(offers_data)
+
+                        # Record parsed offers in database
+                        if parsed_offers:
+                            parsed_offers_id = insert_data(parsed_offers, 'parsed_offers', search_inputs_id)
 
                         # Filter offers based on preferred departure and return times
                         filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
@@ -385,32 +393,10 @@ if st.session_state['page'] == 'input':
             # Store flight data in session state for the results page
             if flight_prices:
                 st.session_state['flight_prices'] = pd.DataFrame(flight_prices)
-                print("Preparing to save search data...", file=sys.stderr)
-                
-                # Insert search inputs
-                search_inputs_id = insert_data(search_inputs, 'search_inputs')
-                print(f"Search inputs saved with ID: {search_inputs_id}", file=sys.stderr)
 
+                # Record flight prices in database
                 if search_inputs_id:
-                    # Insert flight prices
                     flight_prices_id = insert_data(flight_prices, 'flight_prices', search_inputs_id)
-                    print(f"Flight prices saved with ID: {flight_prices_id}", file=sys.stderr)
-
-                    # Insert parsed offers
-                    parsed_offers_id = insert_data(parsed_offers, 'parsed_offers', search_inputs_id)
-                    print(f"Parsed offers saved with ID: {parsed_offers_id}", file=sys.stderr)
-
-                    if flight_prices_id and parsed_offers_id:
-                        st.success("All search data saved successfully!")
-                        st.session_state['search_ids'] = {
-                            'search_inputs': search_inputs_id,
-                            'flight_prices': flight_prices_id,
-                            'parsed_offers': parsed_offers_id
-                        }
-                    else:
-                        st.error("Failed to save some search data.")
-                else:
-                    st.error("Failed to save search inputs.")
 
                 st.session_state['page'] = 'results'
                 st.rerun()  # Redirect to results page if available
