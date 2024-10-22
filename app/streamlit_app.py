@@ -391,23 +391,26 @@ if st.session_state['page'] == 'input':
                 search_inputs_id = insert_data(search_inputs, 'search_inputs')
                 print(f"Search inputs saved with ID: {search_inputs_id}", file=sys.stderr)
 
-                # Insert flight prices
-                flight_prices_id = insert_data(flight_prices, 'flight_prices')
-                print(f"Flight prices saved with ID: {flight_prices_id}", file=sys.stderr)
+                if search_inputs_id:
+                    # Insert flight prices
+                    flight_prices_id = insert_data(flight_prices, 'flight_prices', search_inputs_id)
+                    print(f"Flight prices saved with ID: {flight_prices_id}", file=sys.stderr)
 
-                # Insert parsed offers
-                parsed_offers_id = insert_data(parsed_offers, 'parsed_offers')
-                print(f"Parsed offers saved with ID: {parsed_offers_id}", file=sys.stderr)
+                    # Insert parsed offers
+                    parsed_offers_id = insert_data(parsed_offers, 'parsed_offers', search_inputs_id)
+                    print(f"Parsed offers saved with ID: {parsed_offers_id}", file=sys.stderr)
 
-                if search_inputs_id and flight_prices_id and parsed_offers_id:
-                    st.success("All search data saved successfully!")
-                    st.session_state['search_ids'] = {
-                        'search_inputs': search_inputs_id,
-                        'flight_prices': flight_prices_id,
-                        'parsed_offers': parsed_offers_id
-                    }
+                    if flight_prices_id and parsed_offers_id:
+                        st.success("All search data saved successfully!")
+                        st.session_state['search_ids'] = {
+                            'search_inputs': search_inputs_id,
+                            'flight_prices': flight_prices_id,
+                            'parsed_offers': parsed_offers_id
+                        }
+                    else:
+                        st.error("Failed to save some search data.")
                 else:
-                    st.error("Failed to save some or all search data.")
+                    st.error("Failed to save search inputs.")
 
                 st.session_state['page'] = 'results'
                 st.rerun()  # Redirect to results page if available
@@ -483,6 +486,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
 
 
 

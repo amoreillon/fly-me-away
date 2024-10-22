@@ -3,6 +3,7 @@ import psycopg2
 from psycopg2.extras import Json
 import json
 import sys
+from datetime import datetime
 
 
 # Determine if we are running in test or production
@@ -25,13 +26,24 @@ def create_tables():
     try:
         for table in tables:
             full_table_name = f"{table}_{environment}"
-            cur.execute(f"""
-                CREATE TABLE IF NOT EXISTS {full_table_name} (
-                    id SERIAL PRIMARY KEY,
-                    data JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+            if table == 'search_inputs':
+                cur.execute(f"""
+                    CREATE TABLE IF NOT EXISTS {full_table_name} (
+                        id SERIAL PRIMARY KEY,
+                        data JSONB,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+            else:
+                cur.execute(f"""
+                    CREATE TABLE IF NOT EXISTS {full_table_name} (
+                        id SERIAL PRIMARY KEY,
+                        search_inputs_id INTEGER,
+                        data JSONB,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (search_inputs_id) REFERENCES search_inputs_{environment}(id)
+                    )
+                """)
         conn.commit()
         print("Tables created successfully", file=sys.stderr)
     except Exception as e:
@@ -57,16 +69,31 @@ def get_past_searches(limit=10):
     conn.close()
     return searches
 
-def insert_data(data, table_name):
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super(DateTimeEncoder, self).default(obj)
+
+def insert_data(data, table_name, search_inputs_id=None):
     conn = get_db_connection()
     cur = conn.cursor()
     full_table_name = f"{table_name}_{environment}"
     try:
-        cur.execute(f"""
-            INSERT INTO {full_table_name} (data)
-            VALUES (%s)
-            RETURNING id
-        """, (Json(data),))
+        # Use the custom encoder to handle datetime objects
+        json_data = json.dumps(data, cls=DateTimeEncoder)
+        if table_name == 'search_inputs' or search_inputs_id is None:
+            cur.execute(f"""
+                INSERT INTO {full_table_name} (data)
+                VALUES (%s)
+                RETURNING id
+            """, (json_data,))
+        else:
+            cur.execute(f"""
+                INSERT INTO {full_table_name} (search_inputs_id, data)
+                VALUES (%s, %s)
+                RETURNING id
+            """, (search_inputs_id, json_data))
         record_id = cur.fetchone()[0]
         conn.commit()
         print(f"Data successfully inserted into {full_table_name} with ID: {record_id}", file=sys.stderr)
