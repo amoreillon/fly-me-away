@@ -149,6 +149,40 @@ st.markdown(
     [data-testid="stScatterChart"] text {
         fill: white !important;
     }
+    /* Flight option styling */
+    .flight-option {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .flight-option h3 {
+        color: #13133D;
+        margin-top: 0;
+    }
+    .flight-option p {
+        margin: 5px 0;
+    }
+    .book-now-button {
+        background-color: #FFA500;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+    /* Price styling */
+    .price-link {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #FFA500;  /* Orange color, matching your theme */
+        text-decoration: none;
+    }
+    .price-link:hover {
+        text-decoration: underline;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -367,7 +401,9 @@ if st.session_state['page'] == 'input':
                                 "return_time": return_time.strftime('%H:%M'),
                                 "return_flight": return_flights,
                                 "price": round(cheapest_offer['price'], 2),
-                                "currency": cheapest_offer['currency']
+                                "currency": cheapest_offer['currency'],
+                                "origin": origin,
+                                "destination": destination
                             })
 
                     except Exception as e:
@@ -417,6 +453,9 @@ if st.session_state['page'] == 'input':
 elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_state:
     st.markdown('<h1 class="output-text">Flight Price Details</h1>', unsafe_allow_html=True)
     
+    # Create a fresh copy of the DataFrame
+    df = st.session_state['flight_prices'].copy()
+    
     # New expander for input parameters
     with st.expander("**Search Parameters**", expanded=False):
         col1, col2 = st.columns(2)
@@ -438,8 +477,6 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
             st.write(f"**Departure Time:** {search_inputs.get('departure_time_option', 'N/A')}")
             st.write(f"**Return Time:** {search_inputs.get('return_time_option', 'N/A')}")
 
-    df = st.session_state['flight_prices']
-    
     # Combine price and currency into a single column
     df['Price'] = df.apply(lambda row: f"{row['price']:.2f} {row['currency']}", axis=1)
     
@@ -454,17 +491,63 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     def highlight_best_price(row):
         return ['background-color: lightgreen' if row.name == best_price_index else '' for _ in row]
 
+    # Price Trend Chart Expander
+    with st.expander("**Price Trends**", expanded=True):
+        # Create a copy of the DataFrame
+        df_chart = df.copy()
+        # Extract numeric price for charting
+        df_chart.loc[:, 'numeric_price'] = df_chart['Price'].apply(lambda x: float(x.split()[0]))
+        df_chart = df_chart.set_index('departure_date')['numeric_price']
+        st.scatter_chart(df_chart)
+    
     # Detailed Flight Information Expander
-    with st.expander("**Detailed Flight Information**", expanded=True):
+    with st.expander("**Summary**", expanded=True):
         styled_df = df.style.apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
 
-    # Price Trend Chart Expander
-    with st.expander("**Price Trend Chart**", expanded=True):
-        # Extract numeric price for charting
-        df['numeric_price'] = df['Price'].apply(lambda x: float(x.split()[0]))
-        df_chart = df.set_index('departure_date')['numeric_price']
-        st.scatter_chart(df_chart)
+    # Sort the DataFrame by price before displaying
+    df['numeric_price'] = df['Price'].apply(lambda x: float(x.split()[0]))  # Create a numeric price column
+    df = df.sort_values('numeric_price')  # Sort by the numeric price
+
+    with st.expander("**Flight Options**", expanded=True):
+        total_rows = len(df)
+        for index, (_, row) in enumerate(df.iterrows(), start=1):
+            col1, col2, col3 = st.columns([1, 3, 1])
+            
+            with col1:
+                # Extract airline code from departure flight number
+                airline_code = row['departure_flight'].split()[0]
+                logo_url = f"https://airlabs.co/img/airline/m/{airline_code}.png"
+                st.image(logo_url)
+            
+            with col2:
+                # Outbound flight
+                departure_date = datetime.strptime(row['departure_date'], '%Y-%m-%d')
+                departure_day = departure_date.strftime('%A')
+                departure_formatted = departure_date.strftime('%d/%m/%Y')
+                st.markdown(f"**Departure:**")
+                st.markdown(f"{departure_day} {departure_formatted} at {row['departure_time']} on {row['departure_flight']}")
+                
+                st.markdown("")  # Add a blank line for spacing
+                
+                # Return flight
+                return_date = datetime.strptime(row['return_date'], '%Y-%m-%d')
+                return_day = return_date.strftime('%A')
+                return_formatted = return_date.strftime('%d/%m/%Y')
+                st.markdown(f"**Return:**")
+                st.markdown(f"{return_day} {return_formatted} at {row['return_time']} on {row['return_flight']}")
+            
+            with col3:
+                # Price as a large hyperlink without decimals
+                price_parts = row['Price'].split()
+                price_value = price_parts[0].split('.')[0]  # Get the integer part before the decimal point
+                currency = price_parts[1] if len(price_parts) > 1 else ''  # Get the currency if it exists
+
+                st.markdown(f"<p><strong><a href='https://example.com' target='_blank' style='font-size: 1.2em;'>{price_value} {currency}</a></strong></p>", unsafe_allow_html=True)
+            
+            # Only add separator if it's not the last row
+            if index < total_rows:
+                st.markdown("---")  # Separator between flight options
 
     if st.button("Back to Search"):
         st.session_state['page'] = 'input'
@@ -472,6 +555,23 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
