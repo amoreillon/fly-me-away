@@ -515,10 +515,14 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
             col1, col2, col3 = st.columns([1, 3, 1])
             
             with col1:
-                # Extract airline code from departure flight number
+                # Center the logo vertically and horizontally
                 airline_code = row['departure_flight'].split()[0]
                 logo_url = f"https://airlabs.co/img/airline/m/{airline_code}.png"
-                st.image(logo_url)
+                st.markdown(f"""
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                        <img src="{logo_url}" style="max-width: 100%; max-height: 50px;">
+                    </div>
+                """, unsafe_allow_html=True)
             
             with col2:
                 # Outbound flight
@@ -538,12 +542,19 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
                 st.markdown(f"{return_day} {return_formatted} at {row['return_time']} on {row['return_flight']}")
             
             with col3:
-                # Price as a large hyperlink without decimals
+                # Center the price vertically and horizontally
                 price_parts = row['Price'].split()
                 price_value = price_parts[0].split('.')[0]  # Get the integer part before the decimal point
                 currency = price_parts[1] if len(price_parts) > 1 else ''  # Get the currency if it exists
-
-                st.markdown(f"<p><strong><a href='https://example.com' target='_blank' style='font-size: 1.2em;'>{price_value} {currency}</a></strong></p>", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                        <p style="font-size: 1.2em; font-weight: bold; margin: 0;">
+                            <a href="https://example.com" target="_blank" style="text-decoration: none; color: #FFA500;">
+                                {price_value} {currency}
+                            </a>
+                        </p>
+                    </div>
+                """, unsafe_allow_html=True)
             
             # Only add separator if it's not the last row
             if index < total_rows:
@@ -555,6 +566,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
 
 
 
