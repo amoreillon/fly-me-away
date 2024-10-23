@@ -48,6 +48,11 @@ travel_class_default = params_config['search']['travel_class'].upper()
 departure_time_option_default = params_config['search'].get('departure_time_option', 'Any')
 return_time_option_default = params_config['search'].get('return_time_option', 'Any')
 
+# Read the airlines CSV file
+airlines_df = pd.read_csv('data/airlines.csv')
+# Create a dictionary for quick lookup
+airlines_dict = dict(zip(airlines_df['IATA'], airlines_df['Name']))
+
 
 #  Styling
 st.markdown(
@@ -518,9 +523,11 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
                 # Center the logo vertically and horizontally
                 airline_code = row['departure_flight'].split()[0]
                 logo_url = f"https://airlabs.co/img/airline/m/{airline_code}.png"
+                airline_name = airlines_dict.get(airline_code, 'Unknown Airline')
                 st.markdown(f"""
-                    <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
-                        <img src="{logo_url}" style="max-width: 100%; max-height: 50px;">
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                        <img src="{logo_url}" style="max-width: 100%; max-height: 50px; margin-bottom: 5px;">
+                        <p style="font-size: 0.8em; text-align: center; margin: 0;">{airline_name}</p>
                     </div>
                 """, unsafe_allow_html=True)
             
@@ -566,25 +573,6 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
