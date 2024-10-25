@@ -63,7 +63,15 @@ airlines_dict = {
 st.markdown(
     """
     <style>
-    /* Overall Style */
+    /* Remove top padding and white bar */
+    .stApp {
+        padding-top: 0;
+    }
+    header[data-testid="stHeader"] {
+        display: none;
+    }
+
+    /* Existing styles */
     .stApp {
         background-color: #13133D;
     }
@@ -586,6 +594,8 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
 
 
 
