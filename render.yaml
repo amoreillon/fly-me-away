@@ -9,4 +9,4 @@ services:
         value: 3.9.0
     secrets:
       - name: STREAMLIT_SECRETS
-        mountPath: /.streamlit/secrets.toml
+        mountPath: /opt/render/project/src/.streamlit/secrets.toml
