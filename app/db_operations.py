@@ -1,4 +1,5 @@
-import streamlit as st
+import os
+from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import Json
 import json
@@ -6,16 +7,19 @@ import sys
 from datetime import datetime
 
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Determine if we are running in test or production
-environment = st.secrets.get("environment", "production")  # Defaults to production if not set
+environment = os.getenv('ENVIRONMENT', 'production')
 
 # Database connection function
 def get_db_connection():
     return psycopg2.connect(
-        host=st.secrets["neon_db"]["host"],
-        database=st.secrets["neon_db"]["database"],
-        user=st.secrets["neon_db"]["user"],
-        password=st.secrets["neon_db"]["password"]
+        host=os.getenv('DB_HOST'),
+        database=os.getenv('DB_NAME'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD')
     )
 
 # Function to create tables if they don't exist

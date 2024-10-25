@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import streamlit as st
 from datetime import datetime, timedelta
 import toml
@@ -16,26 +18,25 @@ from streamlit_searchbox import st_searchbox
 
 import sys
 
-# Determine if we are running in test or production
-environment = st.secrets.get("environment", "production")  # Defaults to production if not set
+# Load environment variables from .env file
+load_dotenv()
+
+# Get environment
+environment = os.getenv('ENVIRONMENT', 'production')
 
 # Set API endpoint based on the environment
-if environment == "test":
-    API_URL = "https://test.api.amadeus.com"
-else:
-    API_URL = "https://api.amadeus.com"
+API_URL = "https://test.api.amadeus.com" if environment == "test" else "https://api.amadeus.com"
 
 # Load API credentials
-if "api" in st.secrets:
-    # Load credentials from Streamlit secrets (Streamlit Cloud)
-    if environment == "test":
-        api_key = st.secrets["test_api"]["key"]
-        api_secret = st.secrets["test_api"]["secret"]
-    else:
-        api_key = st.secrets["api"]["key"]
-        api_secret = st.secrets["api"]["secret"]
+if environment == "test":
+    api_key = os.getenv('TEST_API_KEY')
+    api_secret = os.getenv('TEST_API_SECRET')
 else:
-    raise FileNotFoundError("Secrets file not found and no Streamlit secrets available.")
+    api_key = os.getenv('PROD_API_KEY')
+    api_secret = os.getenv('PROD_API_SECRET')
+
+if not api_key or not api_secret:
+    raise ValueError(f"API credentials not found for {environment} environment.")
 
 # Load default search parameters from parameters.toml
 params_config = toml.load('config/parameters.toml')
@@ -573,6 +574,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
 
 
 
