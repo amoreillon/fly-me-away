@@ -51,8 +51,12 @@ return_time_option_default = params_config['search'].get('return_time_option', '
 
 # Read the airlines CSV file
 airlines_df = pd.read_csv('data/airlines.csv')
-# Create a dictionary for quick lookup
-airlines_dict = dict(zip(airlines_df['IATA'], airlines_df['Name']))
+
+# Create a dictionary for quick lookup of both name and URL
+airlines_dict = {
+    iata: {'name': name, 'url': url} 
+    for iata, name, url in zip(airlines_df['IATA'], airlines_df['Name'], airlines_df['url'])
+}
 
 
 #  Styling
@@ -524,11 +528,17 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
                 # Center the logo vertically and horizontally
                 airline_code = row['departure_flight'].split()[0]
                 logo_url = f"https://airlabs.co/img/airline/m/{airline_code}.png"
-                airline_name = airlines_dict.get(airline_code, 'Unknown Airline')
+                airline_info = airlines_dict.get(airline_code, {'name': 'Unknown Airline', 'url': '#'})
+                airline_name = airline_info['name']
+                airline_url = airline_info['url']
                 st.markdown(f"""
                     <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
                         <img src="{logo_url}" style="max-width: 100%; max-height: 50px; margin-bottom: 5px;">
-                        <p style="font-size: 0.8em; text-align: center; margin: 0;">{airline_name}</p>
+                        <p style="font-size: 0.8em; text-align: center; margin: 0;">
+                            <a href="{airline_url}" target="_blank" style="text-decoration: none; color: inherit;">
+                                {airline_name}
+                            </a>
+                        </p>
                     </div>
                 """, unsafe_allow_html=True)
             
@@ -554,10 +564,12 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
                 price_parts = row['Price'].split()
                 price_value = price_parts[0].split('.')[0]  # Get the integer part before the decimal point
                 currency = price_parts[1] if len(price_parts) > 1 else ''  # Get the currency if it exists
+                
+                # Use the airline_url we defined earlier
                 st.markdown(f"""
                     <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
                         <p style="font-size: 1.2em; font-weight: bold; margin: 0;">
-                            <a href="https://example.com" target="_blank" style="text-decoration: none; color: #FFA500;">
+                            <a href="{airline_url}" target="_blank" style="text-decoration: none; color: #FFA500;">
                                 {price_value} {currency}
                             </a>
                         </p>
@@ -574,6 +586,9 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
 
 
 
