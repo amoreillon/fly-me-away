@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime, timedelta, time
+import re
 
 # All functions required to identify cheapest offers on a given day and route
 
@@ -55,7 +56,8 @@ def parse_offers(offers_data):
         
         for itinerary in offer['itineraries']:
             parsed_itinerary = {
-                'segments': []
+                'segments': [],
+                'total_duration': itinerary['duration']
             }
             
             for segment in itinerary['segments']:
@@ -121,3 +123,36 @@ def get_cheapest_offer(offers):
     if not offers:
         return None
     return min(offers, key=lambda x: float(x['price']))
+
+def format_flight_details(itinerary, is_outbound):
+    journey_type = "Outbound Journey" if is_outbound else "Return Journey"
+    first_segment = itinerary['segments'][0]
+    last_segment = itinerary['segments'][-1]
+    
+    journey_date = first_segment['departure']['at'].strftime("%A %d.%m.%Y")
+    departure_time = first_segment['departure']['at'].strftime("%H:%M")
+    
+    details = [f"<strong>{journey_type}</strong>"]
+    details.append(f"{journey_date} at {departure_time}")
+    
+    flight_info = []
+    for segment in itinerary['segments']:
+        flight_number = f"{segment['carrierCode']} {segment['number']}"
+        flight_info.append(f"{flight_number} from {segment['departure']['iataCode']} to {segment['arrival']['iataCode']}")
+    
+    details.append(" → ".join(flight_info))
+    
+    # Convert total travel time to a more readable format
+    total_duration = itinerary['total_duration']
+    hours = re.search(r'(\d+)H', total_duration)
+    minutes = re.search(r'(\d+)M', total_duration)
+    
+    formatted_duration = ""
+    if hours:
+        formatted_duration += f"{hours.group(1)}H"
+    if minutes:
+        formatted_duration += f"{minutes.group(1)}M"
+    
+    details.append(f"Total travel time: {formatted_duration}")
+    
+    return "<br>".join(details)

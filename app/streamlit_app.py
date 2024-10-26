@@ -7,8 +7,9 @@ import time
 import hmac
 import pandas as pd
 import psycopg2
+import logging
 
-from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer
+from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer, format_flight_details
 from lookup_airports import search_airport
 from auth import check_password 
 from db_operations import insert_data, create_tables
@@ -380,11 +381,15 @@ if st.session_state['page'] == 'input':
 
                     try:
                         # Fetch offers
-                        offers_data = get_offers(
-                            access_token, origin, destination,
-                            departure_date_str, return_date_str,
-                            direct_flight, travel_class, API_URL
-                        )
+                        try:
+                            offers_data = get_offers(
+                                access_token, origin, destination,
+                                departure_date_str, return_date_str,
+                                direct_flight, travel_class, API_URL
+                            )
+                        except Exception as e:
+                            logging.error(f"Error fetching offers: {stre(e)}")
+                            offers= None
 
                         # Parse offers data
                         parsed_offers = parse_offers(offers_data)
@@ -413,15 +418,13 @@ if st.session_state['page'] == 'input':
                             # Store data for the table
                             flight_prices.append({
                                 "departure_date": departure_date_str,
-                                "departure_time": departure_time.strftime('%H:%M'),
-                                "departure_flight": departure_flights,
                                 "return_date": return_date_str,
-                                "return_time": return_time.strftime('%H:%M'),
-                                "return_flight": return_flights,
                                 "price": round(cheapest_offer['price'], 2),
                                 "currency": cheapest_offer['currency'],
                                 "origin": origin,
-                                "destination": destination
+                                "destination": destination,
+                                "outbound_itinerary": cheapest_offer['itineraries'][0],
+                                "return_itinerary": cheapest_offer['itineraries'][1]
                             })
 
                     except Exception as e:
@@ -499,7 +502,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     df['Price'] = df.apply(lambda row: f"{row['price']:.2f} {row['currency']}", axis=1)
     
     # Reorder columns to have Price first, then remove individual price and currency columns
-    columns_order = ['Price', 'departure_date', 'departure_time', 'departure_flight', 'return_date', 'return_time', 'return_flight']
+    columns_order = ['Price', 'departure_date', 'return_date', 'price', 'currency', 'origin', 'destination', 'outbound_itinerary', 'return_itinerary']
     df = df[columns_order]
     
     # Highlight the best price in the results table
@@ -520,7 +523,14 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     
     # Detailed Flight Information Expander
     with st.expander("**Summary**", expanded=True):
-        styled_df = df.style.apply(highlight_best_price, axis=1)
+        # Select only the columns you want to display
+        columns_to_display = ['🔥', 'Price', 'departure_date', 'return_date']
+        df_display = df[columns_to_display].copy()
+
+        # Rename columns if needed
+        df_display.columns = ['Best Deal', 'Price', 'Departure Date', 'Return Date']
+
+        styled_df = df_display.style.apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
 
     # Sort the DataFrame by price before displaying
@@ -530,11 +540,11 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     with st.expander("**Flight Options**", expanded=True):
         total_rows = len(df)
         for index, (_, row) in enumerate(df.iterrows(), start=1):
-            col1, col2, col3 = st.columns([1, 3, 1])
+            col1, col2, col3, col4 = st.columns([1, 2, 2, 1])
             
             with col1:
-                # Center the logo vertically and horizontally
-                airline_code = row['departure_flight'].split()[0]
+                # Get the airline code from the first segment of the outbound itinerary
+                airline_code = row['outbound_itinerary']['segments'][0]['carrierCode']
                 logo_url = f"https://airlabs.co/img/airline/m/{airline_code}.png"
                 airline_info = airlines_dict.get(airline_code, {'name': 'Unknown Airline', 'url': '#'})
                 airline_name = airline_info['name']
@@ -551,29 +561,20 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
                 """, unsafe_allow_html=True)
             
             with col2:
-                # Outbound flight
-                departure_date = datetime.strptime(row['departure_date'], '%Y-%m-%d')
-                departure_day = departure_date.strftime('%A')
-                departure_formatted = departure_date.strftime('%d/%m/%Y')
-                st.markdown(f"**Departure:**")
-                st.markdown(f"{departure_day} {departure_formatted} at {row['departure_time']} on {row['departure_flight']}")
+                outbound_details = format_flight_details(row['outbound_itinerary'], is_outbound=True)
                 
-                st.markdown("")  # Add a blank line for spacing
                 
-                # Return flight
-                return_date = datetime.strptime(row['return_date'], '%Y-%m-%d')
-                return_day = return_date.strftime('%A')
-                return_formatted = return_date.strftime('%d/%m/%Y')
-                st.markdown(f"**Return:**")
-                st.markdown(f"{return_day} {return_formatted} at {row['return_time']} on {row['return_flight']}")
-            
+                st.markdown(outbound_details, unsafe_allow_html=True)
+                
             with col3:
-                # Center the price vertically and horizontally
+                return_details = format_flight_details(row['return_itinerary'], is_outbound=False)
+                st.markdown(return_details, unsafe_allow_html=True)
+            
+            with col4:
                 price_parts = row['Price'].split()
                 price_value = price_parts[0].split('.')[0]  # Get the integer part before the decimal point
                 currency = price_parts[1] if len(price_parts) > 1 else ''  # Get the currency if it exists
                 
-                # Use the airline_url we defined earlier
                 st.markdown(f"""
                     <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
                         <p style="font-size: 1.2em; font-weight: bold; margin: 0;">
@@ -594,6 +595,12 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
+
+
+
 
 
 
