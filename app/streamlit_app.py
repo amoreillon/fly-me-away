@@ -252,7 +252,7 @@ if st.session_state['page'] == 'input':
             origin_full = st_searchbox(
             search_airport_wrapper,
             key="origin_search",
-            placeholder="Search origin airport...",
+            placeholder="Zürich Airport (ZRH)",
             default=origin_default,
             label="Origin"
         )
@@ -264,7 +264,7 @@ if st.session_state['page'] == 'input':
             destination_full = st_searchbox(
                 search_airport_wrapper,
                 key="destination_search",
-                placeholder="Search destination airport...",
+                placeholder="Porto Airport (OPO)",
                 default=destination_default,
                 label="Destination"
             )
