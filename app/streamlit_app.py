@@ -140,12 +140,12 @@ st.markdown(
         align-items: center;
         gap: 20px;
     }
-    .title-text h1 {
+    .naked-text h1 {
         color: white;
         margin-top: 0;
         margin-bottom: 10px;
     }
-    .title-text p {
+    .naked-text p {
         color: white;
         margin-top: 0;
     }
@@ -233,7 +233,7 @@ if st.session_state['page'] == 'input':
         with col2:
             st.markdown(
                 """
-                <div class="title-text">
+                <div class="naked-text">
                     <h1>Fly Me Away</h1>
                     <p>
                     Find the cheapest holiday or weekend flights to your favorite destinations over a range of dates. 
@@ -426,7 +426,7 @@ if st.session_state['page'] == 'input':
 
                     except Exception as e:
                         if '429' in str(e):
-                            st.warning("Rate limit reached. Waiting for 60 seconds...")
+                            st.markdown('<div class="naked-text"><p>Rate limit reached. Waiting for 60 seconds...</p></div>', unsafe_allow_html=True)
                             time.sleep(60)
                         else:
                             st.error(f"An error occurred while fetching flight data: {e}")
@@ -455,7 +455,7 @@ if st.session_state['page'] == 'input':
                 st.session_state['page'] = 'results'
                 st.rerun()  # Redirect to results page if available
             else:
-                st.write("No flight data available for the selected date range.")
+                st.markdown('<div class="naked-text"><p>No flight data available for the selected date range.</p></div>', unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
