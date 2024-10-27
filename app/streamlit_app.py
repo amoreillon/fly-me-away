@@ -418,7 +418,11 @@ if st.session_state['page'] == 'input':
                             # Store data for the table
                             flight_prices.append({
                                 "departure_date": departure_date_str,
+                                "departure_time": departure_time.strftime('%H:%M'),
+                                "departure_flight": departure_flights,
                                 "return_date": return_date_str,
+                                "return_time": return_time.strftime('%H:%M'),
+                                "return_flight": return_flights,
                                 "price": round(cheapest_offer['price'], 2),
                                 "currency": cheapest_offer['currency'],
                                 "origin": origin,
@@ -502,7 +506,7 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     df['Price'] = df.apply(lambda row: f"{row['price']:.2f} {row['currency']}", axis=1)
     
     # Reorder columns to have Price first, then remove individual price and currency columns
-    columns_order = ['Price', 'departure_date', 'return_date', 'price', 'currency', 'origin', 'destination', 'outbound_itinerary', 'return_itinerary']
+    columns_order = ['Price', 'departure_date', 'departure_time', 'departure_flight', 'return_date', 'return_time', 'return_flight', 'price', 'currency', 'origin', 'destination', 'outbound_itinerary', 'return_itinerary']
     df = df[columns_order]
     
     # Highlight the best price in the results table
@@ -524,11 +528,11 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     # Detailed Flight Information Expander
     with st.expander("**Summary**", expanded=True):
         # Select only the columns you want to display
-        columns_to_display = ['🔥', 'Price', 'departure_date', 'return_date']
+        columns_to_display = ['🔥', 'Price', 'departure_date', 'departure_time', 'departure_flight', 'return_date', 'return_time', 'return_flight']
         df_display = df[columns_to_display].copy()
 
         # Rename columns if needed
-        df_display.columns = ['Best Deal', 'Price', 'Departure Date', 'Return Date']
+        df_display.columns = ['Best Deal', 'Price', 'Departure Date', 'Departure Time', 'Departure Flight(s)', 'Return Date', 'Return Time', 'Return Flight(s)']
 
         styled_df = df_display.style.apply(highlight_best_price, axis=1)
         st.dataframe(styled_df)
@@ -562,8 +566,6 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
             
             with col2:
                 outbound_details = format_flight_details(row['outbound_itinerary'], is_outbound=True)
-                
-                
                 st.markdown(outbound_details, unsafe_allow_html=True)
                 
             with col3:
