@@ -19,6 +19,12 @@ from streamlit_searchbox import st_searchbox
 
 import sys
 
+st.set_page_config(
+    page_title="Fly Me Away",
+    page_icon="✈️",
+    #layout="wide"  # This makes the page use maximum width
+)
+
 # Load environment variables from .env file
 load_dotenv()
 
