@@ -7,3 +7,5 @@ streamlit_extras
 streamlit-searchbox
 psycopg2-binary
 python-dotenv
+backoff
+aiohttp

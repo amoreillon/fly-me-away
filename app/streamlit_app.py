@@ -9,7 +9,7 @@ import pandas as pd
 import psycopg2
 import logging
 
-from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer, format_flight_details
+from search_offers import get_access_token, get_offers, parse_offers, filter_offers_by_time, get_cheapest_offer, format_flight_details, fetch_all_flight_data
 from lookup_airports import search_airport
 from auth import check_password 
 from db_operations import insert_data, create_tables
@@ -18,6 +18,10 @@ from streamlit_extras.buy_me_a_coffee import button
 from streamlit_searchbox import st_searchbox
 
 import sys
+
+# Add to imports
+import asyncio
+import aiohttp
 
 st.set_page_config(
     page_title="Fly Me Away",
@@ -345,117 +349,115 @@ if st.session_state['page'] == 'input':
             if search_inputs:
                 search_inputs_id = insert_data(search_inputs, 'search_inputs')
 
-            # Get access token
-            access_token = get_access_token(api_key, api_secret, API_URL)
-
-            # Convert flight_type to boolean for the API call
-            direct_flight = (str(flight_type == "Direct").lower())  
-
-            # Map departure day to weekday number
-            day_mapping = {
-                'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
-                'Friday': 4, 'Saturday': 5, 'Sunday': 6
+            # Convert departure day name to number (0 = Monday, 6 = Sunday)
+            day_to_num = {
+                'Monday': 0,
+                'Tuesday': 1,
+                'Wednesday': 2,
+                'Thursday': 3,
+                'Friday': 4,
+                'Saturday': 5,
+                'Sunday': 6
             }
-            departure_day_num = day_mapping[departure_day]
+            departure_day_num = day_to_num[departure_day]
 
-            # Map time of departure and return to numbers
-            time_mapping = {
-                "Any": 0,
-                "Morning (midnight to noon)": 1,
-                "Afternoon and evening (noon to midnight)": 2,
-                "Evening (6pm to midnight)": 3
-            }
-
-            # Map departure and return time options to numbers
-            departure_time_option_num = time_mapping[departure_time_option]
-            return_time_option_num = time_mapping[return_time_option]
-        
-            current_date = start_date # Initialize current date
-            flight_prices = []  # Collect data for table and plotting
-
-            # Initialize progress bar
-            total_days = (end_date - start_date).days + 1
-            progress_bar = st.progress(0)
-            progress_counter = 0
-
-
+            # Get all date pairs first
+            date_pairs = []
+            current_date = start_date
             while current_date <= end_date:
                 if current_date.weekday() == departure_day_num:
                     departure_date_str = current_date.strftime('%Y-%m-%d')
                     return_date = current_date + timedelta(days=number_of_nights)
                     return_date_str = return_date.strftime('%Y-%m-%d')
+                    date_pairs.append((departure_date_str, return_date_str))
+                current_date += timedelta(days=1)
 
-                    try:
-                        # Fetch offers
-                        try:
-                            offers_data = get_offers(
-                                access_token, origin, destination,
-                                departure_date_str, return_date_str,
-                                direct_flight, travel_class, API_URL
-                            )
-                        except Exception as e:
-                            logging.error(f"Error fetching offers: {stre(e)}")
-                            offers= None
+            # Convert time options to numbers
+            time_option_map = {
+                "Any": 0,
+                "Morning (midnight to noon)": 1,
+                "Afternoon and evening (noon to midnight)": 2,
+                "Evening (6pm to midnight)": 3
+            }
+            departure_time_option_num = time_option_map[departure_time_option]
+            return_time_option_num = time_option_map[return_time_option]
 
-                        # Parse offers data
-                        parsed_offers = parse_offers(offers_data)
+            # Initialize progress bar and status message
+            progress_bar = st.progress(0)
+            status_message = st.empty()  # Placeholder for status updates
+            total_pairs = len(date_pairs)
 
-                        # Record parsed offers in database
-                        if parsed_offers:
-                            parsed_offers_id = insert_data(parsed_offers, 'parsed_offers', search_inputs_id)
+            # Create a class to handle progress
+            class ProgressTracker:
+                def __init__(self, total):
+                    self.completed = 0
+                    self.total = total
 
-                        # Filter offers based on preferred departure and return times
-                        filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
+                async def update(self):
+                    self.completed += 1
+                    progress = self.completed / self.total
+                    progress_bar.progress(progress)
+                    status_message.text(f"Fetching flights... {self.completed}/{self.total} dates checked")
 
-                        # Get the cheapest offer
-                        cheapest_offer = get_cheapest_offer(filtered_offers)
+            # Create progress tracker instance
+            progress_tracker = ProgressTracker(total_pairs)
 
-                        if cheapest_offer:
-                            # Extract departure flight details
-                            departure_segments = cheapest_offer['itineraries'][0]['segments']
-                            departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
-                            departure_time = departure_segments[0]['departure']['at']
+            # Fetch all flight data
+            direct_flight = flight_type == "Direct"
+            all_offers = asyncio.run(
+                fetch_all_flight_data(
+                    api_key,
+                    api_secret,
+                    API_URL,
+                    origin,
+                    destination,
+                    date_pairs,
+                    direct_flight,
+                    travel_class,
+                    progress_tracker.update
+                )
+            )
 
-                            # Extract return flight details
-                            return_segments = cheapest_offer['itineraries'][1]['segments']
-                            return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
-                            return_time = return_segments[0]['departure']['at']
+            flight_prices = []
+            for i, (offers_data, (departure_date_str, return_date_str)) in enumerate(zip(all_offers, date_pairs)):
+                if isinstance(offers_data, Exception):
+                    st.error(f"Error fetching data for {departure_date_str}: {str(offers_data)}")
+                    continue
 
-                            # Store data for the table
-                            flight_prices.append({
-                                "departure_date": departure_date_str,
-                                "departure_time": departure_time.strftime('%H:%M'),
-                                "departure_flight": departure_flights,
-                                "return_date": return_date_str,
-                                "return_time": return_time.strftime('%H:%M'),
-                                "return_flight": return_flights,
-                                "price": round(cheapest_offer['price'], 2),
-                                "currency": cheapest_offer['currency'],
-                                "origin": origin,
-                                "destination": destination,
-                                "outbound_itinerary": cheapest_offer['itineraries'][0],
-                                "return_itinerary": cheapest_offer['itineraries'][1]
-                            })
+                # Process the offers
+                parsed_offers = parse_offers(offers_data)
+                filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
+                cheapest_offer = get_cheapest_offer(filtered_offers)
 
-                    except Exception as e:
-                        if '429' in str(e):
-                            st.markdown('<div class="naked-text"><p>Rate limit reached. Waiting for 60 seconds...</p></div>', unsafe_allow_html=True)
-                            time.sleep(60)
-                        else:
-                            st.error(f"An error occurred while fetching flight data: {e}")
-                            break
+                if cheapest_offer:
+                    # Extract departure flight details
+                    departure_segments = cheapest_offer['itineraries'][0]['segments']
+                    departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
+                    departure_time = departure_segments[0]['departure']['at']
 
-                    # Pause to respect rate limit
-                    if environment == "test":
-                        time.sleep(0.5)
-                    else:
-                        time.sleep(0.05)
+                    # Extract return flight details
+                    return_segments = cheapest_offer['itineraries'][1]['segments']
+                    return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
+                    return_time = return_segments[0]['departure']['at']
+
+                    # Store data for the table
+                    flight_prices.append({
+                        "departure_date": departure_date_str,
+                        "departure_time": departure_time.strftime('%H:%M'),
+                        "departure_flight": departure_flights,
+                        "return_date": return_date_str,
+                        "return_time": return_time.strftime('%H:%M'),
+                        "return_flight": return_flights,
+                        "price": round(cheapest_offer['price'], 2),
+                        "currency": cheapest_offer['currency'],
+                        "origin": origin,
+                        "destination": destination,
+                        "outbound_itinerary": cheapest_offer['itineraries'][0],
+                        "return_itinerary": cheapest_offer['itineraries'][1]
+                    })
 
                 # Update progress
-                progress_counter += 1
-                progress_bar.progress(min(progress_counter / total_days, 1.0))
-
-                current_date += timedelta(days=1)
+                progress_bar.progress(min((i + 1) / total_pairs, 1.0))
 
             # Store flight data in session state for the results page
             if flight_prices:
@@ -603,6 +605,14 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
+
+
+
+
+
+
 
 
 
