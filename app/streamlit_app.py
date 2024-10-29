@@ -394,13 +394,14 @@ if st.session_state['page'] == 'input':
                                 direct_flight, travel_class, API_URL
                             )
                         except Exception as e:
-                            print(f"Error in get_offers: {str(e)}", file=sys.stderr)  # Debug line
+                            print(f"Error in get_offers: {str(e)}", file=sys.stderr)
                             logging.error(f"Error fetching offers: {str(e)}")
-                            continue  # Skip to next date if we can't get offers
+                            st.error(f"An error occurred while fetching flight data: {str(e)}")
+                            return  # Stop execution completely instead of continue
 
                         if not offers_data:
-                            print("No offers data returned", file=sys.stderr)  # Debug line
-                            continue
+                            print("No offers data returned", file=sys.stderr)
+                            return  # Stop execution completely instead of continue
 
                         # Only proceed if we have offers data
                         if offers_data:
