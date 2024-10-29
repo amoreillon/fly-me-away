@@ -394,56 +394,64 @@ if st.session_state['page'] == 'input':
                                 direct_flight, travel_class, API_URL
                             )
                         except Exception as e:
-                            logging.error(f"Error fetching offers: {stre(e)}")
-                            offers= None
+                            print(f"Error in get_offers: {str(e)}", file=sys.stderr)  # Debug line
+                            logging.error(f"Error fetching offers: {str(e)}")
+                            continue  # Skip to next date if we can't get offers
 
-                        # Parse offers data
-                        parsed_offers = parse_offers(offers_data)
+                        if not offers_data:
+                            print("No offers data returned", file=sys.stderr)  # Debug line
+                            continue
 
-                        # Record parsed offers in database
-                        if parsed_offers:
-                            parsed_offers_id = insert_data(parsed_offers, 'parsed_offers', search_inputs_id)
+                        # Only proceed if we have offers data
+                        if offers_data:
+                            # Parse offers data
+                            parsed_offers = parse_offers(offers_data)
 
-                        # Filter offers based on preferred departure and return times
-                        filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
+                            # Record parsed offers in database
+                            if parsed_offers:
+                                parsed_offers_id = insert_data(parsed_offers, 'parsed_offers', search_inputs_id)
 
-                        # Get the cheapest offer
-                        cheapest_offer = get_cheapest_offer(filtered_offers)
+                            # Filter offers based on preferred departure and return times
+                            filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
 
-                        if cheapest_offer:
-                            # Extract departure flight details
-                            departure_segments = cheapest_offer['itineraries'][0]['segments']
-                            departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
-                            departure_time = departure_segments[0]['departure']['at']
+                            # Get the cheapest offer
+                            cheapest_offer = get_cheapest_offer(filtered_offers)
 
-                            # Extract return flight details
-                            return_segments = cheapest_offer['itineraries'][1]['segments']
-                            return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
-                            return_time = return_segments[0]['departure']['at']
+                            if cheapest_offer:
+                                # Extract departure flight details
+                                departure_segments = cheapest_offer['itineraries'][0]['segments']
+                                departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
+                                departure_time = departure_segments[0]['departure']['at']
 
-                            # Store data for the table
-                            flight_prices.append({
-                                "departure_date": departure_date_str,
-                                "departure_time": departure_time.strftime('%H:%M'),
-                                "departure_flight": departure_flights,
-                                "return_date": return_date_str,
-                                "return_time": return_time.strftime('%H:%M'),
-                                "return_flight": return_flights,
-                                "price": round(cheapest_offer['price'], 2),
-                                "currency": cheapest_offer['currency'],
-                                "origin": origin,
-                                "destination": destination,
-                                "outbound_itinerary": cheapest_offer['itineraries'][0],
-                                "return_itinerary": cheapest_offer['itineraries'][1]
-                            })
+                                # Extract return flight details
+                                return_segments = cheapest_offer['itineraries'][1]['segments']
+                                return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
+                                return_time = return_segments[0]['departure']['at']
+
+                                # Store data for the table
+                                flight_prices.append({
+                                    "departure_date": departure_date_str,
+                                    "departure_time": departure_time.strftime('%H:%M'),
+                                    "departure_flight": departure_flights,
+                                    "return_date": return_date_str,
+                                    "return_time": return_time.strftime('%H:%M'),
+                                    "return_flight": return_flights,
+                                    "price": round(cheapest_offer['price'], 2),
+                                    "currency": cheapest_offer['currency'],
+                                    "origin": origin,
+                                    "destination": destination,
+                                    "outbound_itinerary": cheapest_offer['itineraries'][0],
+                                    "return_itinerary": cheapest_offer['itineraries'][1]
+                                })
 
                     except Exception as e:
                         if '429' in str(e):
                             st.markdown('<div class="naked-text"><p>Rate limit reached. Waiting for 60 seconds...</p></div>', unsafe_allow_html=True)
                             time.sleep(60)
                         else:
-                            st.error(f"An error occurred while fetching flight data: {e}")
-                            break
+                            print(f"Outer exception: {str(e)}", file=sys.stderr)  # Debug line
+                            st.error(f"An error occurred while fetching flight data: {str(e)}")
+                            continue  # Skip to next date instead of breaking
 
                     # Pause to respect rate limit
                     if environment == "test":
