@@ -397,11 +397,11 @@ if st.session_state['page'] == 'input':
                             print(f"Error in get_offers: {str(e)}", file=sys.stderr)
                             logging.error(f"Error fetching offers: {str(e)}")
                             st.error(f"An error occurred while fetching flight data: {str(e)}")
-                            return  # Stop execution completely instead of continue
+                            st.stop()  # Stop execution completely instead of continue
 
                         if not offers_data:
                             print("No offers data returned", file=sys.stderr)
-                            return  # Stop execution completely instead of continue
+                            st.stop()  # Stop execution completely instead of continue
 
                         # Only proceed if we have offers data
                         if offers_data:
