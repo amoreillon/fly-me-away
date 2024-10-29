@@ -401,7 +401,7 @@ if st.session_state['page'] == 'input':
 
                         if not offers_data:
                             print("No offers data returned", file=sys.stderr)
-                            st.stop()  # Stop execution completely instead of continue
+                            #st.stop()  # Stop execution completely instead of continue
 
                         # Only proceed if we have offers data
                         if offers_data:
