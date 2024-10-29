@@ -4,6 +4,9 @@ from datetime import datetime, timedelta, time
 import re
 import ssl
 from asyncio import Semaphore
+from aiohttp import ClientError
+import backoff  # You'll need to install this: pip install backoff
+import sys
 
 # All functions required to identify cheapest offers on a given day and route
 
@@ -33,6 +36,12 @@ async def get_access_token(api_key, api_secret, api_url):
 
 
 # Function to get offers from the Amadeus API
+@backoff.on_exception(
+    backoff.expo,
+    (ClientError, asyncio.TimeoutError),
+    max_tries=3,
+    max_time=30
+)
 async def get_offers(access_token, origin, destination, departure_date, return_date, non_stop, travel_class, api_url):
     params = {
         'originLocationCode': origin,
@@ -40,9 +49,10 @@ async def get_offers(access_token, origin, destination, departure_date, return_d
         'departureDate': departure_date,
         'returnDate': return_date,
         'adults': 1,
-        'max': 50,
-        'nonStop': str(non_stop).lower(),  # Convert boolean to 'true' or 'false' string
-        'travelClass': travel_class
+        'max': 250,  # Increase from 50 to 250 (API maximum)
+        'nonStop': str(non_stop).lower(),
+        'travelClass': travel_class,
+        'currencyCode': 'EUR'  # Add currency code for consistency
     }
     headers = {'Authorization': f'Bearer {access_token}'}
     
@@ -52,12 +62,30 @@ async def get_offers(access_token, origin, destination, departure_date, return_d
     ssl_context.verify_mode = ssl.CERT_NONE
     
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
-        async with session.get(f"{api_url}/v2/shopping/flight-offers", headers=headers, params=params) as response:
-            if response.status == 200:
-                return await response.json()
-            else:
-                text = await response.text()
-                raise Exception(f"Error: {response.status} - {text}")
+        try:
+            async with session.get(
+                f"{api_url}/v2/shopping/flight-offers", 
+                headers=headers, 
+                params=params,
+                timeout=10
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if not data.get('data'):
+                        print(f"No offers found for {departure_date} to {return_date}", file=sys.stderr)
+                        raise Exception("No flight offers found")
+                    print(f"Found {len(data['data'])} offers for {departure_date}", file=sys.stderr)
+                    return data
+                elif response.status == 429:
+                    await asyncio.sleep(1)
+                    raise ClientError("Rate limit exceeded")
+                else:
+                    text = await response.text()
+                    print(f"API error for {departure_date}: {text}", file=sys.stderr)
+                    raise Exception(f"Error: {response.status} - {text}")
+        except Exception as e:
+            print(f"Exception for {departure_date}: {str(e)}", file=sys.stderr)
+            raise
 
 
 # Function to parse offers data into a more readable format
@@ -176,14 +204,18 @@ def format_flight_details(itinerary, is_outbound):
 
 # New function to handle multiple date pairs concurrently
 async def get_offers_for_dates(access_token, origin, destination, date_pairs, non_stop, travel_class, api_url, progress_callback):
-    sem = Semaphore(10)
+    sem = Semaphore(5)  # Reduce concurrent requests to 5
     
     async def get_offer_with_rate_limit(departure_date, return_date):
-        async with sem:  # This ensures only 10 concurrent requests
-            result = await get_offers(access_token, origin, destination, departure_date, return_date, non_stop, travel_class, api_url)
-            await asyncio.sleep(0.1)  # Add a small delay between requests
-            await progress_callback()  # Update progress after each successful request
-            return result
+        async with sem:
+            try:
+                result = await get_offers(access_token, origin, destination, departure_date, return_date, non_stop, travel_class, api_url)
+                await asyncio.sleep(0.2)  # Increase delay between requests
+                await progress_callback()
+                return result
+            except Exception as e:
+                await progress_callback()
+                return e  # Return the exception to handle it later
     
     tasks = []
     for departure_date, return_date in date_pairs:

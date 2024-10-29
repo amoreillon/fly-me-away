@@ -392,12 +392,20 @@ if st.session_state['page'] == 'input':
                 def __init__(self, total):
                     self.completed = 0
                     self.total = total
+                    self.found_flights = 0
+                    self.total_offers = 0
 
-                async def update(self):
+                async def update(self, offers_count=0):
                     self.completed += 1
+                    self.total_offers += offers_count
                     progress = self.completed / self.total
+                    if offers_count > 0:
+                        self.found_flights += 1
                     progress_bar.progress(progress)
-                    status_message.text(f"Fetching flights... {self.completed}/{self.total} dates checked")
+                    status_message.text(
+                        f"Fetching flights... {self.completed}/{self.total} dates checked. "
+                        f"Found {self.total_offers} offers across {self.found_flights} dates."
+                    )
 
             # Create progress tracker instance
             progress_tracker = ProgressTracker(total_pairs)
@@ -419,45 +427,63 @@ if st.session_state['page'] == 'input':
             )
 
             flight_prices = []
+            successful_searches = 0
+            failed_searches = 0
+            
             for i, (offers_data, (departure_date_str, return_date_str)) in enumerate(zip(all_offers, date_pairs)):
                 if isinstance(offers_data, Exception):
+                    failed_searches += 1
                     st.error(f"Error fetching data for {departure_date_str}: {str(offers_data)}")
                     continue
 
-                # Process the offers
-                parsed_offers = parse_offers(offers_data)
-                filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
-                cheapest_offer = get_cheapest_offer(filtered_offers)
+                try:
+                    # Process the offers
+                    parsed_offers = parse_offers(offers_data)
+                    if not parsed_offers:  # No offers found
+                        continue
+                        
+                    filtered_offers = filter_offers_by_time(parsed_offers, departure_time_option_num, return_time_option_num)
+                    cheapest_offer = get_cheapest_offer(filtered_offers)
 
-                if cheapest_offer:
-                    # Extract departure flight details
-                    departure_segments = cheapest_offer['itineraries'][0]['segments']
-                    departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
-                    departure_time = departure_segments[0]['departure']['at']
+                    if cheapest_offer:
+                        successful_searches += 1
+                        # Extract departure flight details
+                        departure_segments = cheapest_offer['itineraries'][0]['segments']
+                        departure_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in departure_segments])
+                        departure_time = departure_segments[0]['departure']['at']
 
-                    # Extract return flight details
-                    return_segments = cheapest_offer['itineraries'][1]['segments']
-                    return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
-                    return_time = return_segments[0]['departure']['at']
+                        # Extract return flight details
+                        return_segments = cheapest_offer['itineraries'][1]['segments']
+                        return_flights = ", ".join([f"{seg['carrierCode']} {seg['number']}" for seg in return_segments])
+                        return_time = return_segments[0]['departure']['at']
 
-                    # Store data for the table
-                    flight_prices.append({
-                        "departure_date": departure_date_str,
-                        "departure_time": departure_time.strftime('%H:%M'),
-                        "departure_flight": departure_flights,
-                        "return_date": return_date_str,
-                        "return_time": return_time.strftime('%H:%M'),
-                        "return_flight": return_flights,
-                        "price": round(cheapest_offer['price'], 2),
-                        "currency": cheapest_offer['currency'],
-                        "origin": origin,
-                        "destination": destination,
-                        "outbound_itinerary": cheapest_offer['itineraries'][0],
-                        "return_itinerary": cheapest_offer['itineraries'][1]
-                    })
+                        # Store data for the table
+                        flight_prices.append({
+                            "departure_date": departure_date_str,
+                            "departure_time": departure_time.strftime('%H:%M'),
+                            "departure_flight": departure_flights,
+                            "return_date": return_date_str,
+                            "return_time": return_time.strftime('%H:%M'),
+                            "return_flight": return_flights,
+                            "price": round(cheapest_offer['price'], 2),
+                            "currency": cheapest_offer['currency'],
+                            "origin": origin,
+                            "destination": destination,
+                            "outbound_itinerary": cheapest_offer['itineraries'][0],
+                            "return_itinerary": cheapest_offer['itineraries'][1]
+                        })
+                except Exception as e:
+                    failed_searches += 1
+                    st.error(f"Error processing data for {departure_date_str}: {str(e)}")
+                    continue
 
-                # Update progress
-                progress_bar.progress(min((i + 1) / total_pairs, 1.0))
+            # Show summary after all searches
+            if successful_searches == 0:
+                st.warning("⚠️ No flight offers were found. This might be temporary - please try your search again.")
+            else:
+                st.success(f"✅ Found flights for {successful_searches} dates")
+                if failed_searches > 0:
+                    st.warning(f"⚠️ Could not fetch data for {failed_searches} dates")
 
             # Store flight data in session state for the results page
             if flight_prices:
@@ -605,6 +631,8 @@ elif st.session_state['page'] == 'results' and 'flight_prices' in st.session_sta
     col1, col2, col3 = st.columns(3)
     with col3:
         button(username="flymeaway", floating=False, width=221)
+
+
 
 
 
